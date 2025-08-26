@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/Sidebar";
+import { MobileSidebar } from "@/components/MobileSidebar";
 import { NotebookView } from "@/components/NotebookView";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -114,44 +115,36 @@ const Index = () => {
   };
 
   return (
-    <div className="flex h-screen bg-background">
-      {/* API Status Banner */}
-      {apiStatus === "disconnected" && (
-        <div className="fixed top-0 left-0 right-0 bg-destructive text-destructive-foreground p-2 text-center z-50">
-          <div className="flex items-center justify-center gap-2">
-            <XCircle className="h-4 w-4" />
-            <span className="text-sm">
-              Backend API is not connected. Please start the backend server on http://localhost:8000
-            </span>
-            <Button 
-              variant="secondary" 
-              size="sm" 
-              onClick={checkAPIConnection}
-              className="ml-2"
-            >
-              Retry
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Sidebar */}
-      <Sidebar
+    <div className="flex min-h-screen bg-background">
+      {/* Mobile Sidebar */}
+      <MobileSidebar
         notebooks={notebooks}
         selectedNotebook={selectedNotebook}
         onSelectNotebook={setSelectedNotebook}
         onCreateNotebook={() => setShowCreateDialog(true)}
-        onDeleteNotebook={handleDeleteNotebook}
       />
 
+      {/* Desktop Sidebar */}
+      <div className="hidden md:block">
+        <Sidebar
+          notebooks={notebooks}
+          selectedNotebook={selectedNotebook}
+          onSelectNotebook={setSelectedNotebook}
+          onCreateNotebook={() => setShowCreateDialog(true)}
+          onDeleteNotebook={handleDeleteNotebook}
+        />
+      </div>
+
       {/* Main Content */}
-      {loading ? (
-        <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      ) : (
-        <NotebookView notebook={selectedNotebook} />
-      )}
+      <div className="flex-1 flex flex-col w-full">
+        {loading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <NotebookView notebook={selectedNotebook} />
+        )}
+      </div>
 
       {/* Create Notebook Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
@@ -191,8 +184,8 @@ const Index = () => {
         </DialogContent>
       </Dialog>
 
-      {/* API Endpoints Info (Bottom Right) */}
-      <div className="fixed bottom-4 right-4 z-40">
+      {/* API Endpoints Info - Hidden on mobile */}
+      <div className="hidden lg:block fixed bottom-4 right-4 z-40">
         <Card className="w-80 shadow-lg">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-3">

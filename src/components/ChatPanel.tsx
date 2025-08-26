@@ -105,28 +105,28 @@ export function ChatPanel({ notebookId }: ChatPanelProps) {
   return (
     <div className="h-full flex flex-col">
       {/* Chat Header */}
-      <div className="p-4 border-b border-border bg-card">
+      <div className="p-3 md:p-4 border-b border-border bg-card">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="p-2 bg-gradient-primary rounded-lg">
-              <Sparkles className="h-5 w-5 text-primary-foreground" />
+            <div className="p-1.5 md:p-2 bg-gradient-to-br from-primary to-primary/70 rounded-lg">
+              <Sparkles className="h-4 w-4 md:h-5 md:w-5 text-primary-foreground" />
             </div>
             <div>
-              <h3 className="font-semibold">AI Assistant</h3>
-              <p className="text-xs text-muted-foreground">
+              <h3 className="text-sm md:text-base font-semibold">AI Assistant</h3>
+              <p className="text-xs text-muted-foreground hidden md:block">
                 Ask questions about your notebook content
               </p>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={loadChatHistory}>
-            <RefreshCw className="h-4 w-4" />
+          <Button variant="ghost" size="icon" onClick={loadChatHistory} className="h-8 w-8 md:h-9 md:w-9">
+            <RefreshCw className="h-3 w-3 md:h-4 md:w-4" />
           </Button>
         </div>
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4">
-        <div className="space-y-4 max-w-4xl mx-auto">
+      <ScrollArea className="flex-1 p-3 md:p-4">
+        <div className="space-y-3 md:space-y-4 max-w-4xl mx-auto">
           {messages.length === 0 ? (
             <Card>
               <CardContent className="text-center py-12">

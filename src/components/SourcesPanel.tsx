@@ -138,24 +138,24 @@ export function SourcesPanel({ notebookId }: SourcesPanelProps) {
   return (
     <div className="h-full flex flex-col">
       {/* Upload Section */}
-      <div className="p-6 border-b border-border">
+      <div className="p-4 md:p-6 border-b border-border">
         <Card>
-          <CardHeader>
-            <CardTitle>Add Sources</CardTitle>
-            <CardDescription>
+          <CardHeader className="p-4 md:p-6">
+            <CardTitle className="text-lg md:text-xl">Add Sources</CardTitle>
+            <CardDescription className="text-xs md:text-sm">
               Upload documents or add links to build your knowledge base
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 md:p-6">
             <Tabs value={uploadType} onValueChange={(v) => setUploadType(v as "file" | "url")}>
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="file">Upload File</TabsTrigger>
-                <TabsTrigger value="url">Add URL</TabsTrigger>
+                <TabsTrigger value="file" className="text-xs md:text-sm">Upload File</TabsTrigger>
+                <TabsTrigger value="url" className="text-xs md:text-sm">Add URL</TabsTrigger>
               </TabsList>
               <TabsContent value="file" className="space-y-4">
-                <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
-                  <Upload className="h-10 w-10 mx-auto mb-4 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground mb-4">
+                <div className="border-2 border-dashed border-border rounded-lg p-6 md:p-8 text-center">
+                  <Upload className="h-8 w-8 md:h-10 md:w-10 mx-auto mb-3 md:mb-4 text-muted-foreground" />
+                  <p className="text-xs md:text-sm text-muted-foreground mb-3 md:mb-4">
                     Drag and drop files here, or click to browse
                   </p>
                   <Input
@@ -199,8 +199,8 @@ export function SourcesPanel({ notebookId }: SourcesPanelProps) {
       </div>
 
       {/* Sources List */}
-      <ScrollArea className="flex-1 p-6">
-        <div className="grid gap-4">
+      <ScrollArea className="flex-1 p-4 md:p-6">
+        <div className="grid gap-3 md:gap-4">
           {sources.length === 0 ? (
             <Card>
               <CardContent className="text-center py-12">

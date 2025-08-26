@@ -36,8 +36,8 @@ export function Sidebar({
   return (
     <div
       className={cn(
-        "relative flex flex-col border-r border-border bg-card transition-all duration-300",
-        isCollapsed ? "w-16" : "w-80"
+        "relative h-screen flex flex-col border-r border-border bg-sidebar-background transition-all duration-300",
+        isCollapsed ? "w-16" : "w-64"
       )}
     >
       {/* Header */}
