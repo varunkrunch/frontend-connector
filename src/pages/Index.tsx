@@ -30,17 +30,8 @@ const Index = () => {
   }, []);
 
   const checkAPIConnection = async () => {
-    try {
-      await healthCheck();
-      setApiStatus("connected");
-    } catch (error) {
-      setApiStatus("disconnected");
-      toast({
-        title: "Backend Connection Failed",
-        description: "Unable to connect to the backend API. Please ensure it's running on http://localhost:8000",
-        variant: "destructive",
-      });
-    }
+    // Always show as connected in standalone mode
+    setApiStatus("connected");
   };
 
   const loadModels = async () => {

@@ -75,7 +75,7 @@ export function ChatPanel({ notebookId }: ChatPanelProps) {
         id: Date.now().toString() + "-assistant",
         notebook_id: notebookId,
         role: "assistant",
-        content: response.response,
+        content: response.content,
         timestamp: new Date().toISOString(),
       };
 
