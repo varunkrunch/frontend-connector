@@ -14,7 +14,8 @@ import {
   Save,
   X,
   FileText,
-  Calendar
+  Calendar,
+  ArrowLeft
 } from "lucide-react";
 import { notesAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +32,7 @@ export function NotesPanel({ notebookId }: NotesPanelProps) {
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [editingNote, setEditingNote] = useState<Partial<Note>>({});
+  const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -60,6 +62,7 @@ export function NotesPanel({ notebookId }: NotesPanelProps) {
       content: "",
       notebook_id: notebookId,
     });
+    setMobileView('detail');
   };
 
   const handleSaveNote = async () => {
@@ -89,6 +92,7 @@ export function NotesPanel({ notebookId }: NotesPanelProps) {
       }
       setIsCreating(false);
       setEditingNote({});
+      setMobileView('list');
       loadNotes();
     } catch (error) {
       toast({
@@ -110,6 +114,7 @@ export function NotesPanel({ notebookId }: NotesPanelProps) {
       });
       if (selectedNote?.id === id) {
         setSelectedNote(null);
+        setMobileView('list');
       }
       loadNotes();
     } catch (error) {
@@ -121,11 +126,189 @@ export function NotesPanel({ notebookId }: NotesPanelProps) {
     }
   };
 
+  const handleSelectNote = (note: Note) => {
+    setSelectedNote(note);
+    setMobileView('detail');
+  };
+
+  const handleBackToList = () => {
+    setMobileView('list');
+    setIsCreating(false);
+    setEditingNote({});
+  };
+
   const filteredNotes = notes.filter(note =>
     (note.title?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
     (note.content?.toLowerCase() || "").includes(searchQuery.toLowerCase())
   );
 
+  // Mobile Layout
+  const isMobile = window.innerWidth < 768;
+  
+  if (isMobile) {
+    return (
+      <div className="h-full flex flex-col">
+        {/* Mobile List View */}
+        {mobileView === 'list' && (
+          <>
+            <div className="p-4 border-b border-border space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">My Notes</h3>
+                <Button 
+                  size="sm" 
+                  onClick={handleCreateNote}
+                  className="bg-primary text-primary-foreground"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  New
+                </Button>
+              </div>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search notes..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 h-10"
+                />
+              </div>
+            </div>
+            
+            <ScrollArea className="flex-1">
+              <div className="p-4 space-y-3">
+                {filteredNotes.length === 0 ? (
+                  <Card className="border-dashed">
+                    <CardContent className="text-center py-12">
+                      <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+                      <p className="text-muted-foreground font-medium mb-1">
+                        {searchQuery ? "No notes found" : "No notes yet"}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Tap "New" to create your first note
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  filteredNotes.map((note) => (
+                    <Card
+                      key={note.id}
+                      className="cursor-pointer active:scale-[0.98] transition-all"
+                      onClick={() => handleSelectNote(note)}
+                    >
+                      <CardContent className="p-4">
+                        <h4 className="font-semibold text-base mb-1">{note.title}</h4>
+                        <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                          {note.content}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-3 w-3 text-muted-foreground/70" />
+                          <span className="text-xs text-muted-foreground/70">
+                            {new Date(note.updated_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          </>
+        )}
+
+        {/* Mobile Detail View */}
+        {mobileView === 'detail' && (selectedNote || isCreating) && (
+          <>
+            <div className="p-4 border-b border-border">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleBackToList}
+                    className="h-8 w-8"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </Button>
+                  <h2 className="text-lg font-semibold truncate">
+                    {isCreating ? "New Note" : selectedNote?.title}
+                  </h2>
+                </div>
+                {!isCreating && (
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setEditingNote(selectedNote!);
+                        setIsCreating(true);
+                      }}
+                      className="h-8 w-8"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteNote(selectedNote!.id)}
+                      className="h-8 w-8 text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <ScrollArea className="flex-1">
+              <div className="p-4">
+                {isCreating ? (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Title</label>
+                      <Input
+                        value={editingNote.title || ""}
+                        onChange={(e) => setEditingNote({ ...editingNote, title: e.target.value })}
+                        placeholder="Enter note title..."
+                        className="text-base"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium mb-2 block">Content</label>
+                      <Textarea
+                        value={editingNote.content || ""}
+                        onChange={(e) => setEditingNote({ ...editingNote, content: e.target.value })}
+                        placeholder="Write your note content..."
+                        className="min-h-[300px] text-base"
+                      />
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                      <Button onClick={handleSaveNote} className="flex-1">
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Note
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={handleBackToList}
+                        className="flex-1"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="prose prose-neutral dark:prose-invert max-w-none">
+                    <p className="whitespace-pre-wrap text-base leading-relaxed">{selectedNote?.content}</p>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // Desktop Layout
   return (
     <div className="h-full flex">
       {/* Notes List */}
@@ -168,7 +351,7 @@ export function NotesPanel({ notebookId }: NotesPanelProps) {
                     "cursor-pointer hover:bg-accent/50 transition-colors",
                     selectedNote?.id === note.id && "bg-accent"
                   )}
-                  onClick={() => setSelectedNote(note)}
+                  onClick={() => handleSelectNote(note)}
                 >
                   <CardContent className="p-3">
                     <h4 className="font-medium truncate">{note.title}</h4>
