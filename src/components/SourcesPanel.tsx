@@ -14,7 +14,9 @@ import {
   Trash2, 
   Eye,
   Download,
-  Plus
+  Plus,
+  ChevronUp,
+  ChevronDown
 } from "lucide-react";
 import { sourcesAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
@@ -29,6 +31,7 @@ export function SourcesPanel({ notebookId }: SourcesPanelProps) {
   const [loading, setLoading] = useState(false);
   const [uploadType, setUploadType] = useState<"file" | "url">("file");
   const [url, setUrl] = useState("");
+  const [showAddPanel, setShowAddPanel] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -137,124 +140,132 @@ export function SourcesPanel({ notebookId }: SourcesPanelProps) {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Upload Section */}
-      <div className="p-4 md:p-6 border-b border-border">
-        <Card>
-          <CardHeader className="p-4 md:p-6">
-            <CardTitle className="text-lg md:text-xl">Add Sources</CardTitle>
-            <CardDescription className="text-xs md:text-sm">
-              Upload documents or add links to build your knowledge base
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-4 md:p-6">
-            <Tabs value={uploadType} onValueChange={(v) => setUploadType(v as "file" | "url")}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="file" className="text-xs md:text-sm">Upload File</TabsTrigger>
-                <TabsTrigger value="url" className="text-xs md:text-sm">Add URL</TabsTrigger>
-              </TabsList>
-              <TabsContent value="file" className="space-y-4">
-                <div className="border-2 border-dashed border-border rounded-lg p-6 md:p-8 text-center">
-                  <Upload className="h-8 w-8 md:h-10 md:w-10 mx-auto mb-3 md:mb-4 text-muted-foreground" />
-                  <p className="text-xs md:text-sm text-muted-foreground mb-3 md:mb-4">
-                    Drag and drop files here, or click to browse
-                  </p>
-                  <Input
-                    type="file"
-                    accept=".pdf,.txt,.doc,.docx"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    id="file-upload"
-                    disabled={loading}
-                  />
-                  <label htmlFor="file-upload">
-                    <Button variant="outline" asChild disabled={loading}>
-                      <span>Choose Files</span>
-                    </Button>
-                  </label>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Supported: PDF, TXT, DOC, DOCX (Max 10MB)
-                  </p>
-                </div>
-              </TabsContent>
-              <TabsContent value="url" className="space-y-4">
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Enter a URL (website, YouTube, etc.)"
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    disabled={loading}
-                  />
-                  <Button onClick={handleUrlSubmit} disabled={loading || !url}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Add websites, YouTube videos, or other online content
-                </p>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+      {/* Minimized Add Sources Button - Always at top */}
+      <div className="p-4 border-b border-border">
+        <Button 
+          onClick={() => setShowAddPanel(!showAddPanel)}
+          variant="outline"
+          className="w-full justify-between"
+        >
+          <span className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Add Sources
+          </span>
+          {showAddPanel ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </Button>
       </div>
 
-      {/* Sources List */}
-      <ScrollArea className="flex-1 p-4 md:p-6">
-        <div className="grid gap-3 md:gap-4">
+      {/* Collapsible Upload Section */}
+      {showAddPanel && (
+        <div className="p-4 border-b border-border bg-muted/30">
+          <Tabs value={uploadType} onValueChange={(v) => setUploadType(v as "file" | "url")}>
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="file" className="text-xs">Upload File</TabsTrigger>
+              <TabsTrigger value="url" className="text-xs">Add URL</TabsTrigger>
+            </TabsList>
+            <TabsContent value="file" className="mt-0">
+              <div className="flex items-center gap-2">
+                <Input
+                  type="file"
+                  accept=".pdf,.txt,.doc,.docx"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  id="file-upload"
+                  disabled={loading}
+                />
+                <label htmlFor="file-upload" className="flex-1">
+                  <Button variant="secondary" className="w-full" asChild disabled={loading}>
+                    <span>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Choose Files
+                    </span>
+                  </Button>
+                </label>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                PDF, TXT, DOC, DOCX (Max 10MB)
+              </p>
+            </TabsContent>
+            <TabsContent value="url" className="mt-0">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter URL..."
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  disabled={loading}
+                  className="flex-1"
+                />
+                <Button onClick={handleUrlSubmit} disabled={loading || !url} size="sm">
+                  Add
+                </Button>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+      )}
+
+      {/* Sources List - Main Content Area */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-4">
           {sources.length === 0 ? (
-            <Card>
-              <CardContent className="text-center py-12">
-                <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-lg font-semibold mb-2">No sources yet</h3>
-                <p className="text-muted-foreground">
-                  Upload documents or add links to get started
-                </p>
-              </CardContent>
-            </Card>
+            <div className="text-center py-12">
+              <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-semibold mb-2">No sources yet</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Upload documents or add links to get started
+              </p>
+              <Button 
+                onClick={() => setShowAddPanel(true)}
+                variant="default"
+                size="sm"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Your First Source
+              </Button>
+            </div>
           ) : (
-            sources.map((source) => (
-              <Card key={source.id} className="hover:bg-accent/50 transition-colors">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 bg-primary/10 rounded-lg">
-                        {getSourceIcon(source.source_type)}
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-medium">{source.title}</h4>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="secondary" className="text-xs">
-                            {source.source_type}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            Added {new Date(source.created_at).toLocaleDateString()}
-                          </span>
+            <div className="space-y-3">
+              {sources.map((source) => (
+                <Card key={source.id} className="hover:bg-accent/50 transition-colors">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3 flex-1">
+                        <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+                          {getSourceIcon(source.source_type)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium truncate">{source.title}</h4>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="secondary" className="text-xs">
+                              {source.source_type}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(source.created_at).toLocaleDateString()}
+                            </span>
+                          </div>
                         </div>
                       </div>
+                      <div className="flex gap-1 ml-2 shrink-0">
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => handleDeleteSource(source.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <Download className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8"
-                        onClick={() => handleDeleteSource(source.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           )}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }
