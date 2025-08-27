@@ -122,8 +122,8 @@ export function NotesPanel({ notebookId }: NotesPanelProps) {
   };
 
   const filteredNotes = notes.filter(note =>
-    note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    note.content.toLowerCase().includes(searchQuery.toLowerCase())
+    (note.title?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+    (note.content?.toLowerCase() || "").includes(searchQuery.toLowerCase())
   );
 
   return (
