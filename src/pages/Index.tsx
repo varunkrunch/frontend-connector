@@ -115,7 +115,7 @@ const Index = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex h-screen bg-background overflow-hidden">
       {/* Mobile Sidebar */}
       <MobileSidebar
         notebooks={notebooks}
@@ -124,8 +124,8 @@ const Index = () => {
         onCreateNotebook={() => setShowCreateDialog(true)}
       />
 
-      {/* Desktop Sidebar */}
-      <div className="hidden md:block">
+      {/* Desktop Sidebar - Fixed */}
+      <div className="hidden md:block h-screen">
         <Sidebar
           notebooks={notebooks}
           selectedNotebook={selectedNotebook}
@@ -135,8 +135,8 @@ const Index = () => {
         />
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col w-full">
+      {/* Main Content - Scrollable */}
+      <div className="flex-1 flex flex-col h-screen overflow-y-auto">
         {loading ? (
           <div className="flex-1 flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
