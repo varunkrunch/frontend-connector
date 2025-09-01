@@ -2,11 +2,6 @@ import { useState, useEffect } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { MobileSidebar } from "@/components/MobileSidebar";
 import { NotebookView } from "@/components/NotebookView";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -18,8 +13,6 @@ const Index = () => {
   const [notebooks, setNotebooks] = useState<Notebook[]>([]);
   const [selectedNotebook, setSelectedNotebook] = useState<Notebook | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [newNotebook, setNewNotebook] = useState({ name: "", description: "" });
   const [apiStatus, setApiStatus] = useState<"connected" | "disconnected" | "checking">("checking");
   const [models, setModels] = useState<Model[]>([]);
   const { toast } = useToast();
@@ -65,34 +58,6 @@ const Index = () => {
     }
   };
 
-  const handleCreateNotebook = async () => {
-    if (!newNotebook.name.trim()) {
-      toast({
-        title: "Name required",
-        description: "Please provide a name for your notebook.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const created = await notebookAPI.create(newNotebook);
-      setNotebooks([...notebooks, created]);
-      setSelectedNotebook(created);
-      setShowCreateDialog(false);
-      setNewNotebook({ name: "", description: "" });
-      toast({
-        title: "Notebook created",
-        description: `"${created.name}" has been created successfully.`,
-      });
-    } catch (error) {
-      toast({
-        title: "Creation failed",
-        description: "Failed to create notebook. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleDeleteNotebook = async (id: string) => {
     try {
@@ -121,7 +86,7 @@ const Index = () => {
         notebooks={notebooks}
         selectedNotebook={selectedNotebook}
         onSelectNotebook={setSelectedNotebook}
-        onCreateNotebook={() => setShowCreateDialog(true)}
+        onCreateNotebook={() => {}}
       />
 
       {/* Desktop Sidebar - Fixed */}
@@ -130,7 +95,7 @@ const Index = () => {
           notebooks={notebooks}
           selectedNotebook={selectedNotebook}
           onSelectNotebook={setSelectedNotebook}
-          onCreateNotebook={() => setShowCreateDialog(true)}
+          onCreateNotebook={() => {}}
           onDeleteNotebook={handleDeleteNotebook}
         />
       </div>
@@ -146,43 +111,6 @@ const Index = () => {
         )}
       </div>
 
-      {/* Create Notebook Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create New Notebook</DialogTitle>
-            <DialogDescription>
-              Create a new notebook to organize your sources and notes
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                placeholder="My Research Notebook"
-                value={newNotebook.name}
-                onChange={(e) => setNewNotebook({ ...newNotebook, name: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Description (optional)</Label>
-              <Textarea
-                id="description"
-                placeholder="A collection of research materials and notes..."
-                value={newNotebook.description}
-                onChange={(e) => setNewNotebook({ ...newNotebook, description: e.target.value })}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreateNotebook}>Create Notebook</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* API Endpoints Info - Hidden on mobile */}
       <div className="hidden lg:block fixed bottom-4 right-4 z-40">

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 import type { Notebook } from "@/types";
 
 interface MobileSidebarProps {
@@ -20,6 +21,7 @@ export function MobileSidebar({
   onCreateNotebook,
 }: MobileSidebarProps) {
   const [open, setOpen] = useState(false);
+  const navigate = useNavigate();
 
   const handleSelectNotebook = (notebook: Notebook) => {
     onSelectNotebook(notebook);
@@ -48,7 +50,7 @@ export function MobileSidebar({
         <div className="p-4">
           <Button
             onClick={() => {
-              onCreateNotebook();
+              navigate('/create-notebook');
               setOpen(false);
             }}
             className="w-full gap-2"

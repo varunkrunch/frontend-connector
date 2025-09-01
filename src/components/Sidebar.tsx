@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 import type { Notebook } from "@/types";
 
 interface SidebarProps {
@@ -25,6 +26,7 @@ export function Sidebar({
   const [searchQuery, setSearchQuery] = useState("");
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [filteredNotebooks, setFilteredNotebooks] = useState(notebooks);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const filtered = notebooks.filter((notebook) =>
@@ -76,7 +78,7 @@ export function Sidebar({
       {/* New Notebook Button */}
       <div className="px-4 pb-4">
         <Button
-          onClick={onCreateNotebook}
+          onClick={() => navigate('/create-notebook')}
           className={cn(
             "w-full justify-start gap-2",
             isCollapsed && "justify-center px-0"
