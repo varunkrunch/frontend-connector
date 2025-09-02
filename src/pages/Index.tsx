@@ -1,71 +1,43 @@
 import { useState, useEffect } from "react";
-import { Sidebar } from "@/components/Sidebar";
-import { MobileSidebar } from "@/components/MobileSidebar";
-import { NotebookView } from "@/components/NotebookView";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { notebookAPI, healthCheck, modelsAPI } from "@/services/api";
-import { CheckCircle, XCircle, Loader2, AlertCircle } from "lucide-react";
-import type { Notebook, Model } from "@/types";
+import { notebookAPI } from "@/services/api";
+import { Plus, BookOpen, FileText, Mic, MoreVertical, Settings, User, Loader2, Cloud, TrendingUp, Recycle, Code, FileCode, Palette } from "lucide-react";
+import type { Notebook } from "@/types";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const Index = () => {
   const [notebooks, setNotebooks] = useState<Notebook[]>([]);
-  const [selectedNotebook, setSelectedNotebook] = useState<Notebook | null>(null);
   const [loading, setLoading] = useState(true);
-  const [apiStatus, setApiStatus] = useState<"connected" | "disconnected" | "checking">("checking");
-  const [models, setModels] = useState<Model[]>([]);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    checkAPIConnection();
     loadNotebooks();
-    loadModels();
   }, []);
-
-  const checkAPIConnection = async () => {
-    // Always show as connected in standalone mode
-    setApiStatus("connected");
-  };
-
-  const loadModels = async () => {
-    try {
-      const modelsList = await modelsAPI.list();
-      setModels(modelsList);
-    } catch (error) {
-      console.error("Failed to load models:", error);
-    }
-  };
 
   const loadNotebooks = async () => {
     try {
       setLoading(true);
       const data = await notebookAPI.list();
       setNotebooks(data);
-      if (data.length > 0 && !selectedNotebook) {
-        setSelectedNotebook(data[0]);
-      }
     } catch (error) {
-      if (apiStatus === "connected") {
-        toast({
-          title: "Error loading notebooks",
-          description: "Failed to load notebooks. Please try again.",
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Error loading notebooks",
+        description: "Failed to load notebooks. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-
   const handleDeleteNotebook = async (id: string) => {
     try {
       await notebookAPI.delete(id);
       setNotebooks(notebooks.filter(n => n.id !== id));
-      if (selectedNotebook?.id === id) {
-        setSelectedNotebook(notebooks[0] || null);
-      }
       toast({
         title: "Notebook deleted",
         description: "The notebook has been deleted successfully.",
@@ -79,119 +51,145 @@ const Index = () => {
     }
   };
 
+  const handleOpenNotebook = (notebook: Notebook) => {
+    navigate(`/notebook/${notebook.id}`, { state: { notebook } });
+  };
+
+  const getNotebookIcon = (index: number) => {
+    const icons = [Cloud, TrendingUp, Recycle, Code, FileCode, Palette];
+    const Icon = icons[index % icons.length];
+    return <Icon className="h-12 w-12" />;
+  };
+
+  const getNotebookDate = (date?: string) => {
+    if (!date) return new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+    return new Date(date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
+  const getSourceCount = () => {
+    // Generate random source count for display
+    return Math.floor(Math.random() * 10) + 1;
+  };
+
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
-      {/* Mobile Sidebar */}
-      <MobileSidebar
-        notebooks={notebooks}
-        selectedNotebook={selectedNotebook}
-        onSelectNotebook={setSelectedNotebook}
-        onCreateNotebook={() => {}}
-      />
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      {/* Header */}
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-xl">
+                <BookOpen className="h-6 w-6 text-primary" />
+              </div>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                NotebookLM
+              </h1>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="icon" className="rounded-full">
+                <Settings className="h-5 w-5" />
+              </Button>
+              <div className="h-8 w-px bg-border" />
+              <Button variant="ghost" size="sm" className="gap-2">
+                PRO
+              </Button>
+              <Button variant="ghost" size="icon" className="rounded-full">
+                <User className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
 
-      {/* Desktop Sidebar - Fixed */}
-      <div className="hidden md:block h-screen">
-        <Sidebar
-          notebooks={notebooks}
-          selectedNotebook={selectedNotebook}
-          onSelectNotebook={setSelectedNotebook}
-          onCreateNotebook={() => {}}
-          onDeleteNotebook={handleDeleteNotebook}
-        />
-      </div>
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold mb-2">Recent notebooks</h2>
+          <p className="text-muted-foreground">Organize your sources, notes, and ideas in one place</p>
+        </div>
 
-      {/* Main Content - Scrollable */}
-      <div className="flex-1 flex flex-col h-screen overflow-y-auto">
         {loading ? (
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
-          <NotebookView notebook={selectedNotebook} />
-        )}
-      </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {/* Create New Notebook Card */}
+            <Card 
+              className="group hover:shadow-xl transition-all duration-300 cursor-pointer hover:scale-105 border-dashed border-2 bg-muted/10"
+              onClick={() => navigate('/create-notebook')}
+            >
+              <CardContent className="flex flex-col items-center justify-center p-8 h-[200px]">
+                <div className="p-4 bg-primary/10 rounded-full mb-4 group-hover:bg-primary/20 transition-colors">
+                  <Plus className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="font-semibold text-lg">Create new notebook</h3>
+              </CardContent>
+            </Card>
 
-
-      {/* API Endpoints Info - Hidden on mobile */}
-      <div className="hidden lg:block fixed bottom-4 right-4 z-40">
-        <Card className="w-80 shadow-lg">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="font-semibold text-sm">Backend Status</h4>
-              <Badge variant={apiStatus === "connected" ? "default" : "destructive"}>
-                {apiStatus === "checking" ? (
-                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                ) : apiStatus === "connected" ? (
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                ) : (
-                  <XCircle className="h-3 w-3 mr-1" />
-                )}
-                {apiStatus}
-              </Badge>
-            </div>
-            
-            <div className="space-y-2 text-xs">
-              <div className="font-medium text-muted-foreground mb-2">Available Endpoints:</div>
-              <div className="grid grid-cols-2 gap-2">
-                <Badge variant="outline" className="justify-start">
-                  <span className="truncate">/notebooks</span>
-                </Badge>
-                <Badge variant="outline" className="justify-start">
-                  <span className="truncate">/notes</span>
-                </Badge>
-                <Badge variant="outline" className="justify-start">
-                  <span className="truncate">/sources</span>
-                </Badge>
-                <Badge variant="outline" className="justify-start">
-                  <span className="truncate">/podcasts</span>
-                </Badge>
-                <Badge variant="outline" className="justify-start">
-                  <span className="truncate">/chat</span>
-                </Badge>
-                <Badge variant="outline" className="justify-start">
-                  <span className="truncate">/search</span>
-                </Badge>
-                <Badge variant="outline" className="justify-start">
-                  <span className="truncate">/models</span>
-                </Badge>
-                <Badge variant="outline" className="justify-start">
-                  <span className="truncate">/transformations</span>
-                </Badge>
-              </div>
-              
-              {models.length > 0 && (
-                <>
-                  <div className="font-medium text-muted-foreground mt-3 mb-1">Available Models:</div>
-                  <div className="space-y-1">
-                    {models.slice(0, 3).map((model) => (
-                      <div key={model.id} className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-xs">
-                          {model.name}
-                        </Badge>
-                        <span className={`text-xs ${model.status === 'available' ? 'text-green-600' : 'text-muted-foreground'}`}>
-                          {model.status}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-              
-              <div className="pt-2 border-t">
-                <a 
-                  href="http://localhost:8000/docs" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline flex items-center gap-1"
+            {/* Notebook Cards */}
+            {notebooks.map((notebook, index) => (
+              <Card 
+                key={notebook.id} 
+                className="group hover:shadow-xl transition-all duration-300 cursor-pointer hover:scale-105 relative overflow-hidden"
+              >
+                <div className="absolute top-2 right-2 z-10">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleOpenNotebook(notebook)}>
+                        Open
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>Rename</DropdownMenuItem>
+                      <DropdownMenuItem>Duplicate</DropdownMenuItem>
+                      <DropdownMenuItem 
+                        className="text-destructive"
+                        onClick={() => handleDeleteNotebook(notebook.id)}
+                      >
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+                
+                <CardContent 
+                  className="p-6 h-[200px] flex flex-col"
+                  onClick={() => handleOpenNotebook(notebook)}
                 >
-                  <AlertCircle className="h-3 w-3" />
-                  View API Documentation
-                </a>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                  <div className="flex items-start gap-4 mb-4">
+                    <div className="p-3 bg-gradient-to-br from-primary/20 to-primary/10 rounded-xl text-primary">
+                      {getNotebookIcon(index)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-lg truncate mb-1">{notebook.name}</h3>
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {notebook.description || "No description"}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-auto flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{getNotebookDate(notebook.created_at)}</span>
+                    <span className="font-medium">
+                      {getSourceCount()} source{getSourceCount() !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </main>
     </div>
   );
 };

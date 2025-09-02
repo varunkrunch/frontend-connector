@@ -38,7 +38,7 @@ export default function CreateNotebook() {
         description: "Your new notebook has been created successfully.",
       });
       
-      navigate("/");
+      navigate(`/notebook/${notebook.id}`, { state: { notebook } });
     } catch (error) {
       toast({
         title: "Failed to create notebook",
