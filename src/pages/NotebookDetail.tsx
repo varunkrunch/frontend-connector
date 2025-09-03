@@ -147,36 +147,29 @@ export default function NotebookDetail() {
         </div>
       </header>
 
-      {/* Main Content with Sidebar */}
-      <div className="flex h-[calc(100vh-65px)]">
-        {/* Content Area */}
-        <main className="flex-1 overflow-hidden">
-          <div className="h-full">
-            {activeTab === "sources" && <SourcesPanel notebookId={notebook.id} />}
-            {activeTab === "notes" && <NotesPanel notebookId={notebook.id} />}
-            {activeTab === "chat" && <ChatPanel notebookId={notebook.id} />}
-            {activeTab === "podcasts" && <PodcastPanel notebookId={notebook.id} />}
-          </div>
-        </main>
-
-        {/* Right Sidebar Navigation */}
+      {/* Main Content with Left Sidebar */}
+      <div className="flex h-[calc(100vh-65px)] sm:h-[calc(100vh-73px)]">
+        {/* Left Sidebar Navigation - Hidden on Mobile */}
         <aside className={cn(
-          "border-l bg-card/50 transition-all duration-300",
-          isSidebarOpen ? "w-48 lg:w-56" : "w-16"
+          "hidden sm:flex border-r bg-card/50 transition-all duration-300",
+          isSidebarOpen ? "sm:w-44 md:w-48 lg:w-56" : "w-14"
         )}>
-          <nav className="h-full flex flex-col">
+          <nav className="h-full flex flex-col w-full">
             <div className="p-2 border-b">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="w-full justify-center"
+                className="w-full justify-center hover:bg-accent"
               >
-                {isSidebarOpen ? "<<" : ">>"}
+                {isSidebarOpen ? 
+                  <span className="text-xs font-medium">◀</span> : 
+                  <span className="text-xs font-medium">▶</span>
+                }
               </Button>
             </div>
             
-            <div className="flex-1 p-2 space-y-1">
+            <div className="flex-1 p-2 space-y-1 overflow-y-auto">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
@@ -206,6 +199,43 @@ export default function NotebookDetail() {
             </div>
           </nav>
         </aside>
+
+        {/* Content Area */}
+        <main className="flex-1 overflow-hidden">
+          <div className="h-full">
+            {activeTab === "sources" && <SourcesPanel notebookId={notebook.id} />}
+            {activeTab === "notes" && <NotesPanel notebookId={notebook.id} />}
+            {activeTab === "chat" && <ChatPanel notebookId={notebook.id} />}
+            {activeTab === "podcasts" && <PodcastPanel notebookId={notebook.id} />}
+          </div>
+        </main>
+
+        {/* Mobile Bottom Navigation */}
+        <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur border-t sm:hidden z-40">
+          <nav className="flex justify-around items-center py-2">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={cn(
+                    "flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg transition-all",
+                    "hover:bg-accent/50 min-w-0 flex-1",
+                    activeTab === tab.id 
+                      ? "text-primary" 
+                      : "text-muted-foreground"
+                  )}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span className="text-[10px] font-medium">
+                    {tab.label}
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
       </div>
     </div>
   );
