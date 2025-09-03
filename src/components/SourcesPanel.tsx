@@ -17,11 +17,13 @@ import {
   Link,
   Download,
   ExternalLink,
-  X
+  X,
+  ChevronLeft
 } from "lucide-react";
 import { sourcesAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import type { Source } from "@/types";
+import { cn } from "@/lib/utils";
 
 interface SourcesPanelProps {
   notebookId: string;
@@ -147,9 +149,12 @@ export function SourcesPanel({ notebookId }: SourcesPanelProps) {
   );
 
   return (
-    <div className="h-full flex">
-      {/* Sources List - Left Side */}
-      <div className="w-80 flex flex-col border-r">
+    <div className="h-full flex flex-col lg:flex-row">
+      {/* Sources List - Mobile: Full width, Desktop: Sidebar */}
+      <div className={cn(
+        "flex flex-col border-b lg:border-b-0 lg:border-r bg-card/50",
+        selectedSource ? "hidden lg:flex lg:w-80" : "flex w-full lg:w-80"
+      )}>
         {/* Header with Search and Add Button */}
         <div className="p-4 border-b bg-muted/30">
           <div className="flex items-center gap-2 mb-3">
@@ -289,12 +294,24 @@ export function SourcesPanel({ notebookId }: SourcesPanelProps) {
       </div>
 
       {/* Source Details - Right Side */}
-      <div className="flex-1 bg-muted/10">
+      <div className={cn(
+        "bg-muted/10",
+        selectedSource ? "flex-1" : "hidden lg:flex lg:flex-1"
+      )}>
         {selectedSource ? (
           <div className="h-full flex flex-col">
-            <div className="p-6 border-b">
+            <div className="p-4 sm:p-6 border-b">
               <div className="flex items-start justify-between">
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  {/* Mobile back button */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setSelectedSource(null)}
+                    className="lg:hidden shrink-0"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
                   <div className="p-2 bg-primary/10 rounded-lg">
                     {getSourceIcon(selectedSource.source_type)}
                   </div>

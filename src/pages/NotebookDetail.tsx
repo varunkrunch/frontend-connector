@@ -1,9 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, FileText, BookOpen, MessageSquare, Mic, Plus, Download, Trash2 } from "lucide-react";
+import { ArrowLeft, FileText, BookOpen, MessageSquare, Mic, Download, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { notebookAPI } from "@/services/api";
 import type { Notebook } from "@/types";
@@ -11,6 +9,7 @@ import { SourcesPanel } from "@/components/SourcesPanel";
 import { NotesPanel } from "@/components/NotesPanel";
 import { ChatPanel } from "@/components/ChatPanel";
 import { PodcastPanel } from "@/components/PodcastPanel";
+import { cn } from "@/lib/utils";
 
 export default function NotebookDetail() {
   const { id } = useParams();
@@ -20,6 +19,7 @@ export default function NotebookDetail() {
   const [notebook, setNotebook] = useState<Notebook | null>(location.state?.notebook || null);
   const [activeTab, setActiveTab] = useState("sources");
   const [loading, setLoading] = useState(!notebook);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   useEffect(() => {
     if (!notebook && id) {
@@ -72,6 +72,13 @@ export default function NotebookDetail() {
     }
   };
 
+  const tabs = [
+    { id: "sources", label: "Sources", icon: FileText },
+    { id: "notes", label: "Notes", icon: BookOpen },
+    { id: "chat", label: "Chat", icon: MessageSquare },
+    { id: "podcasts", label: "Podcasts", icon: Mic },
+  ];
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -96,80 +103,110 @@ export default function NotebookDetail() {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <div className="px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => navigate("/")}
-                className="rounded-full"
+                className="rounded-full shrink-0"
               >
-                <ArrowLeft className="h-5 w-5" />
+                <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
               
-              <div>
-                <h1 className="text-2xl font-bold">{notebook.name}</h1>
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-2xl font-bold truncate">{notebook.name}</h1>
                 {notebook.description && (
-                  <p className="text-sm text-muted-foreground">{notebook.description}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground truncate">{notebook.description}</p>
                 )}
               </div>
             </div>
             
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleExport}>
-                <Download className="h-4 w-4 mr-2" />
-                Export
+            <div className="flex items-center gap-2 self-end sm:self-auto">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleExport}
+                className="text-xs sm:text-sm"
+              >
+                <Download className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Export</span>
               </Button>
-              <Button variant="destructive" size="sm" onClick={handleDelete}>
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                onClick={handleDelete}
+                className="text-xs sm:text-sm"
+              >
+                <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">Delete</span>
               </Button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Content */}
-      <main className="container mx-auto px-4 py-6">
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-6">
-            <TabsTrigger value="sources" className="gap-2">
-              <FileText className="h-4 w-4" />
-              Sources
-            </TabsTrigger>
-            <TabsTrigger value="notes" className="gap-2">
-              <BookOpen className="h-4 w-4" />
-              Notes
-            </TabsTrigger>
-            <TabsTrigger value="chat" className="gap-2">
-              <MessageSquare className="h-4 w-4" />
-              Chat
-            </TabsTrigger>
-            <TabsTrigger value="podcasts" className="gap-2">
-              <Mic className="h-4 w-4" />
-              Podcasts
-            </TabsTrigger>
-          </TabsList>
+      {/* Main Content with Sidebar */}
+      <div className="flex h-[calc(100vh-65px)]">
+        {/* Content Area */}
+        <main className="flex-1 overflow-hidden">
+          <div className="h-full">
+            {activeTab === "sources" && <SourcesPanel notebookId={notebook.id} />}
+            {activeTab === "notes" && <NotesPanel notebookId={notebook.id} />}
+            {activeTab === "chat" && <ChatPanel notebookId={notebook.id} />}
+            {activeTab === "podcasts" && <PodcastPanel notebookId={notebook.id} />}
+          </div>
+        </main>
 
-          <TabsContent value="sources" className="mt-0">
-            <SourcesPanel notebookId={notebook.id} />
-          </TabsContent>
-
-          <TabsContent value="notes" className="mt-0">
-            <NotesPanel notebookId={notebook.id} />
-          </TabsContent>
-
-          <TabsContent value="chat" className="mt-0">
-            <ChatPanel notebookId={notebook.id} />
-          </TabsContent>
-
-          <TabsContent value="podcasts" className="mt-0">
-            <PodcastPanel notebookId={notebook.id} />
-          </TabsContent>
-        </Tabs>
-      </main>
+        {/* Right Sidebar Navigation */}
+        <aside className={cn(
+          "border-l bg-card/50 transition-all duration-300",
+          isSidebarOpen ? "w-48 lg:w-56" : "w-16"
+        )}>
+          <nav className="h-full flex flex-col">
+            <div className="p-2 border-b">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="w-full justify-center"
+              >
+                {isSidebarOpen ? "<<" : ">>"}
+              </Button>
+            </div>
+            
+            <div className="flex-1 p-2 space-y-1">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all",
+                      "hover:bg-accent/50",
+                      activeTab === tab.id 
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90" 
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Icon className={cn(
+                      "shrink-0 transition-all",
+                      isSidebarOpen ? "h-4 w-4" : "h-5 w-5"
+                    )} />
+                    {isSidebarOpen && (
+                      <span className="text-sm font-medium truncate">
+                        {tab.label}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
+        </aside>
+      </div>
     </div>
   );
 }

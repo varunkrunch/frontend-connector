@@ -15,11 +15,13 @@ import {
   Save,
   X,
   Copy,
-  Share
+  Share,
+  ChevronLeft
 } from "lucide-react";
 import { notesAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import type { Note } from "@/types";
+import { cn } from "@/lib/utils";
 
 interface NotesPanelProps {
   notebookId: string;
@@ -159,9 +161,12 @@ export function NotesPanel({ notebookId }: NotesPanelProps) {
   );
 
   return (
-    <div className="h-full flex">
-      {/* Notes List - Left Side */}
-      <div className="w-80 flex flex-col border-r">
+    <div className="h-full flex flex-col lg:flex-row">
+      {/* Notes List - Mobile: Full width, Desktop: Sidebar */}
+      <div className={cn(
+        "flex flex-col border-b lg:border-b-0 lg:border-r bg-card/50",
+        selectedNote || isCreating ? "hidden lg:flex lg:w-80" : "flex w-full lg:w-80"
+      )}>
         {/* Header with Search and Add Button */}
         <div className="p-4 border-b bg-muted/30">
           <div className="flex items-center gap-2">
@@ -246,65 +251,86 @@ export function NotesPanel({ notebookId }: NotesPanelProps) {
       </div>
 
       {/* Note Editor - Right Side */}
-      <div className="flex-[1.5] bg-muted/10">
+      <div className={cn(
+        "bg-muted/10",
+        selectedNote || isCreating ? "flex-1" : "hidden lg:flex lg:flex-1"
+      )}>
         {selectedNote || isCreating ? (
           <div className="h-full flex flex-col">
-            <div className="p-4 border-b">
-              <div className="flex items-center justify-between">
-                {isEditing || isCreating ? (
-                  <Input
-                    placeholder="Note title..."
-                    value={noteTitle}
-                    onChange={(e) => setNoteTitle(e.target.value)}
-                    className="text-xl font-semibold max-w-2xl"
-                  />
-                ) : (
-                  <h2 className="text-xl font-semibold">{noteTitle}</h2>
-                )}
+            <div className="p-4 sm:p-6 border-b">
+              <div className="flex items-start gap-3">
+                {/* Mobile back button */}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    setSelectedNote(null);
+                    setIsCreating(false);
+                    setIsEditing(false);
+                    setNoteTitle("");
+                    setNoteContent("");
+                  }}
+                  className="lg:hidden shrink-0 mt-1"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
                 
-                <div className="flex items-center gap-2">
-                  {(isEditing || isCreating) ? (
-                    <>
-                      <Button
-                        size="sm"
-                        onClick={handleSaveNote}
-                        disabled={loading}
-                      >
-                        <Save className="h-4 w-4 mr-2" />
-                        Save
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleCancel}
-                      >
-                        <X className="h-4 w-4 mr-2" />
-                        Cancel
-                      </Button>
-                    </>
+                <div className="flex-1 flex items-center justify-between">
+                  {isEditing || isCreating ? (
+                    <Input
+                      placeholder="Note title..."
+                      value={noteTitle}
+                      onChange={(e) => setNoteTitle(e.target.value)}
+                      className="text-lg sm:text-xl font-semibold max-w-2xl"
+                    />
                   ) : (
-                    <>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setIsEditing(true)}
-                      >
-                        <Edit className="h-4 w-4 mr-2" />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setSelectedNote(null);
-                          setNoteTitle("");
-                          setNoteContent("");
-                        }}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </>
+                    <h2 className="text-lg sm:text-xl font-semibold">{noteTitle}</h2>
                   )}
+                  
+                  <div className="flex items-center gap-2">
+                    {(isEditing || isCreating) ? (
+                      <>
+                        <Button
+                          size="sm"
+                          onClick={handleSaveNote}
+                          disabled={loading}
+                        >
+                          <Save className="h-4 w-4 mr-2" />
+                          Save
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleCancel}
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          Cancel
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setIsEditing(true)}
+                        >
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setSelectedNote(null);
+                            setNoteTitle("");
+                            setNoteContent("");
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
               
