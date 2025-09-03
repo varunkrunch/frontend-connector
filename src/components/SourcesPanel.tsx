@@ -149,7 +149,7 @@ export function SourcesPanel({ notebookId }: SourcesPanelProps) {
   return (
     <div className="h-full flex">
       {/* Sources List - Left Side */}
-      <div className="flex-1 flex flex-col border-r">
+      <div className="w-80 flex flex-col border-r">
         {/* Header with Search and Add Button */}
         <div className="p-4 border-b bg-muted/30">
           <div className="flex items-center gap-2 mb-3">

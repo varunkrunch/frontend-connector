@@ -132,39 +132,6 @@ export default function NotebookDetail() {
 
       {/* Content */}
       <main className="container mx-auto px-4 py-6">
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-card rounded-lg p-4 border">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Sources</p>
-                <p className="text-2xl font-bold">0</p>
-              </div>
-              <FileText className="h-8 w-8 text-muted-foreground/20" />
-            </div>
-          </div>
-          
-          <div className="bg-card rounded-lg p-4 border">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Notes</p>
-                <p className="text-2xl font-bold">0</p>
-              </div>
-              <BookOpen className="h-8 w-8 text-muted-foreground/20" />
-            </div>
-          </div>
-          
-          <div className="bg-card rounded-lg p-4 border">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Podcasts</p>
-                <p className="text-2xl font-bold">0</p>
-              </div>
-              <Mic className="h-8 w-8 text-muted-foreground/20" />
-            </div>
-          </div>
-        </div>
-
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4 mb-6">
