@@ -365,10 +365,10 @@ export default function NotebookDetail() {
       </div>
 
       {/* Desktop Three Panel Layout */}
-      <div className="hidden sm:flex h-[calc(100vh-65px)] gap-1">
+      <div className="hidden sm:flex h-[calc(100vh-65px)] gap-6 p-6 bg-gradient-to-br from-background via-background to-muted/20">
         {/* Left Panel - Sources */}
         <div className={cn(
-          "border bg-card/50 transition-all duration-300 flex flex-col rounded-lg shadow-sm",
+          "bg-card border border-border/50 transition-all duration-300 flex flex-col rounded-xl shadow-lg hover:shadow-xl backdrop-blur-sm",
           isSourceExpanded ? "w-[600px]" : "w-80"
         )}>
           <div className="p-4 border-b">
@@ -448,13 +448,13 @@ export default function NotebookDetail() {
         </div>
 
         {/* Middle Panel - Chat */}
-        <div className="flex-1 border bg-card rounded-lg shadow-sm">
+        <div className="flex-1 bg-card border border-border/50 rounded-xl shadow-lg hover:shadow-xl backdrop-blur-sm">
           <ChatPanel notebookId={notebook.id} />
         </div>
 
         {/* Right Panel - Studio */}
         <div className={cn(
-          "border bg-card/50 transition-all duration-300 flex flex-col rounded-lg shadow-sm",
+          "bg-card border border-border/50 transition-all duration-300 flex flex-col rounded-xl shadow-lg hover:shadow-xl backdrop-blur-sm",
           isCreatingNote ? "w-[600px]" : "w-96"
         )}>
           {!isCreatingNote ? (
@@ -609,13 +609,13 @@ export default function NotebookDetail() {
                 <input
                   type="text"
                   placeholder="Note title..."
-                  className="w-full px-3 py-2 rounded-md border bg-background font-semibold"
+                  className="w-full px-3 py-2 rounded-lg border bg-background/50 font-semibold backdrop-blur-sm"
                   value={noteTitle}
                   onChange={(e) => setNoteTitle(e.target.value)}
                 />
                 <textarea
                   placeholder="Start writing your note..."
-                  className="w-full flex-1 px-3 py-2 rounded-md border bg-background resize-none min-h-[400px]"
+                  className="w-full flex-1 px-3 py-2 rounded-lg border bg-background/50 resize-none min-h-[400px] backdrop-blur-sm"
                   value={noteContent}
                   onChange={(e) => setNoteContent(e.target.value)}
                 />
@@ -645,7 +645,7 @@ export default function NotebookDetail() {
             <input
               type="text"
               placeholder="Search sources..."
-              className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+              className="w-full px-3 py-2 rounded-lg border bg-background/50 text-sm backdrop-blur-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -729,7 +729,7 @@ export default function NotebookDetail() {
                 <input
                   type="text"
                   placeholder="Describe what you want to discuss..."
-                  className="flex-1 px-3 py-2 rounded-md border bg-background text-sm"
+                  className="flex-1 px-3 py-2 rounded-lg border bg-background/50 text-sm backdrop-blur-sm"
                   value={podcastPrompt}
                   onChange={(e) => setPodcastPrompt(e.target.value)}
                   disabled={isGeneratingPodcast}
@@ -853,13 +853,13 @@ export default function NotebookDetail() {
               <input
                 type="text"
                 placeholder="Note title..."
-                className="w-full px-3 py-2 rounded-md border bg-background font-semibold"
+                className="w-full px-3 py-2 rounded-lg border bg-background/50 font-semibold backdrop-blur-sm"
                 value={noteTitle}
                 onChange={(e) => setNoteTitle(e.target.value)}
               />
               <textarea
                 placeholder="Start writing your note..."
-                className="w-full flex-1 px-3 py-2 rounded-md border bg-background resize-none"
+                className="w-full flex-1 px-3 py-2 rounded-lg border bg-background/50 resize-none backdrop-blur-sm"
                 value={noteContent}
                 onChange={(e) => setNoteContent(e.target.value)}
               />

@@ -103,9 +103,9 @@ export function ChatPanel({ notebookId }: ChatPanelProps) {
   };
 
   return (
-    <div className="h-full flex flex-col rounded-lg overflow-hidden">
+    <div className="h-full flex flex-col overflow-hidden">
       {/* Chat Header */}
-      <div className="p-3 sm:p-4 border-b border-border bg-card/80">
+      <div className="p-3 sm:p-4 border-b border-border bg-card/80 backdrop-blur-sm">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="p-1.5 sm:p-2 bg-gradient-to-br from-primary to-primary/70 rounded-lg">
@@ -244,7 +244,7 @@ export function ChatPanel({ notebookId }: ChatPanelProps) {
       </ScrollArea>
 
       {/* Input */}
-      <div className="p-3 sm:p-4 border-t border-border bg-card/80">
+      <div className="p-3 sm:p-4 border-t border-border bg-card/80 backdrop-blur-sm">
         <div className="flex gap-2 max-w-4xl mx-auto">
           <Input
             placeholder="Ask about your notebook..."
@@ -252,7 +252,7 @@ export function ChatPanel({ notebookId }: ChatPanelProps) {
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
             disabled={loading}
-            className="flex-1 text-sm sm:text-base"
+            className="flex-1 text-sm sm:text-base bg-background/50 backdrop-blur-sm"
           />
           <Button 
             onClick={handleSendMessage} 
