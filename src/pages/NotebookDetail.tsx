@@ -470,10 +470,6 @@ export default function NotebookDetail() {
                     Audio Overview
                   </Button>
                   <Button variant="outline" size="sm" className="justify-start">
-                    <Video className="h-4 w-4 mr-2" />
-                    Video Overview
-                  </Button>
-                  <Button variant="outline" size="sm" className="justify-start">
                     <Network className="h-4 w-4 mr-2" />
                     Mind Map
                   </Button>
@@ -706,10 +702,6 @@ export default function NotebookDetail() {
               <Button variant="outline" size="sm" className="justify-start">
                 <AudioLines className="h-4 w-4 mr-2" />
                 Audio Overview
-              </Button>
-              <Button variant="outline" size="sm" className="justify-start">
-                <Video className="h-4 w-4 mr-2" />
-                Video Overview
               </Button>
               <Button variant="outline" size="sm" className="justify-start">
                 <Network className="h-4 w-4 mr-2" />
