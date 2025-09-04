@@ -113,5 +113,73 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    /* Improve mobile scrolling */
+    -webkit-overflow-scrolling: touch;
+    /* Prevent zoom on input focus on iOS */
+    font-size: 16px;
+  }
+
+  /* Improve touch targets on mobile */
+  button, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Better mobile input experience */
+  input, textarea, select {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+
+  /* Smooth scrolling for mobile */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Better mobile focus states */
+  *:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* Mobile-first responsive utilities */
+  .mobile-container {
+    @apply px-4 sm:px-6 lg:px-8;
+  }
+  
+  .mobile-padding {
+    @apply py-4 sm:py-6 lg:py-8;
+  }
+  
+  .mobile-text {
+    @apply text-sm sm:text-base lg:text-lg;
+  }
+  
+  .mobile-heading {
+    @apply text-xl sm:text-2xl lg:text-3xl xl:text-4xl;
+  }
+  
+  .mobile-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+  }
+  
+  /* Mobile-friendly card */
+  .mobile-card {
+    @apply p-4 sm:p-6 rounded-lg border bg-card shadow-sm hover:shadow-md transition-shadow;
+  }
+  
+  /* Mobile-friendly button */
+  .mobile-button {
+    @apply h-10 sm:h-11 px-4 sm:px-6 text-sm sm:text-base font-medium rounded-md transition-colors;
+  }
+  
+  /* Mobile-friendly spacing */
+  .mobile-space-y {
+    @apply space-y-4 sm:space-y-6 lg:space-y-8;
+  }
+  
+  .mobile-gap {
+    @apply gap-3 sm:gap-4 lg:gap-6;
   }
 }

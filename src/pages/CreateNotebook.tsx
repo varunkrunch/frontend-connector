@@ -52,9 +52,9 @@ export default function CreateNotebook() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container max-w-2xl mx-auto py-12 px-4">
+      <div className="container max-w-2xl mx-auto py-6 sm:py-12 px-4">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <Button
             variant="ghost"
             size="sm"
@@ -65,22 +65,22 @@ export default function CreateNotebook() {
             Back to Notebooks
           </Button>
           
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Brain className="h-8 w-8 text-primary" />
+          <div className="flex items-center gap-2 sm:gap-3 mb-2">
+            <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg">
+              <Brain className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
             </div>
-            <h1 className="text-3xl font-bold">Create New Notebook</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold">Create New Notebook</h1>
           </div>
-          <p className="text-muted-foreground">
+          <p className="text-sm sm:text-base text-muted-foreground">
             Start organizing your sources, notes, and ideas in one place
           </p>
         </div>
 
         {/* Form */}
-        <Card className="p-6">
-          <div className="space-y-6">
+        <Card className="p-4 sm:p-6">
+          <div className="space-y-4 sm:space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="name">
+              <Label htmlFor="name" className="text-sm sm:text-base">
                 Notebook Name <span className="text-destructive">*</span>
               </Label>
               <Input
@@ -88,13 +88,13 @@ export default function CreateNotebook() {
                 placeholder="e.g., Machine Learning Research"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="h-11"
+                className="h-10 sm:h-11 text-sm sm:text-base"
                 autoFocus
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">
+              <Label htmlFor="description" className="text-sm sm:text-base">
                 Description <span className="text-muted-foreground text-xs">(optional)</span>
               </Label>
               <Textarea
@@ -103,15 +103,15 @@ export default function CreateNotebook() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
-                className="resize-none"
+                className="resize-none text-sm sm:text-base"
               />
             </div>
 
-            <div className="flex gap-3 pt-4">
+            <div className="flex flex-col sm:flex-row gap-3 pt-4">
               <Button
                 onClick={handleCreate}
                 disabled={isCreating || !name.trim()}
-                className="flex-1"
+                className="flex-1 order-2 sm:order-1"
               >
                 {isCreating ? (
                   <>Creating...</>
@@ -126,6 +126,7 @@ export default function CreateNotebook() {
                 variant="outline"
                 onClick={() => navigate("/")}
                 disabled={isCreating}
+                className="order-1 sm:order-2"
               >
                 Cancel
               </Button>
@@ -134,9 +135,9 @@ export default function CreateNotebook() {
         </Card>
 
         {/* Tips */}
-        <div className="mt-8 p-4 bg-muted/50 rounded-lg">
+        <div className="mt-6 sm:mt-8 p-4 bg-muted/50 rounded-lg">
           <h3 className="font-semibold mb-2 text-sm">Tips for organizing notebooks:</h3>
-          <ul className="text-sm text-muted-foreground space-y-1">
+          <ul className="text-xs sm:text-sm text-muted-foreground space-y-1">
             <li>• Use descriptive names that clearly identify the topic</li>
             <li>• Group related sources and notes in the same notebook</li>
             <li>• Add descriptions to help you remember the notebook's purpose</li>

@@ -18,25 +18,32 @@ const STORAGE_KEYS = {
 
 // Initialize mock data
 const initializeMockData = () => {
+  console.log("Initializing mock data...");
+  
   if (!localStorage.getItem(STORAGE_KEYS.notebooks)) {
+    console.log("Creating initial notebooks...");
     const initialNotebooks = [
       {
         id: '1',
         name: 'Machine Learning Research',
+        description: 'Research notes and sources for machine learning projects',
         created_at: new Date('2024-01-15').toISOString(),
         updated_at: new Date().toISOString(),
       },
       {
         id: '2',
         name: 'Product Strategy 2024',
+        description: 'Product strategy and market research',
         created_at: new Date('2024-02-01').toISOString(),
         updated_at: new Date().toISOString(),
       },
     ];
     localStorage.setItem(STORAGE_KEYS.notebooks, JSON.stringify(initialNotebooks));
+    console.log("Initial notebooks created:", initialNotebooks);
   }
 
   if (!localStorage.getItem(STORAGE_KEYS.sources)) {
+    console.log("Creating initial sources...");
     const initialSources = [
       {
         id: '1',
@@ -58,19 +65,23 @@ const initializeMockData = () => {
       },
     ];
     localStorage.setItem(STORAGE_KEYS.sources, JSON.stringify(initialSources));
+    console.log("Initial sources created:", initialSources);
   }
 
   if (!localStorage.getItem(STORAGE_KEYS.notes)) {
+    console.log("Creating initial notes...");
     const initialNotes = [
       {
         id: '1',
         notebook_id: '1',
+        title: 'Key Concepts',
         content: '## Key Concepts\n\n- Activation functions\n- Backpropagation\n- Gradient descent',
         created_at: new Date('2024-01-18').toISOString(),
         updated_at: new Date('2024-01-18').toISOString(),
       },
     ];
     localStorage.setItem(STORAGE_KEYS.notes, JSON.stringify(initialNotes));
+    console.log("Initial notes created:", initialNotes);
   }
 
   if (!localStorage.getItem(STORAGE_KEYS.podcasts)) {
