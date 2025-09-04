@@ -102,7 +102,7 @@ export default function NotebookDetail() {
   };
 
   const handleSaveNote = async () => {
-    if (!id || !noteTitle.trim() || !noteContent.trim()) return;
+    if (!id || !noteTitle?.trim() || !noteContent?.trim()) return;
 
     try {
       if (expandedNoteId) {
@@ -166,7 +166,7 @@ export default function NotebookDetail() {
   };
 
   const handleGeneratePodcast = async () => {
-    if (!id || !podcastPrompt.trim()) return;
+    if (!id || !podcastPrompt?.trim()) return;
     
     setIsGeneratingPodcast(true);
     try {
@@ -503,7 +503,7 @@ export default function NotebookDetail() {
                     <Button 
                       size="sm"
                       onClick={handleGeneratePodcast}
-                      disabled={isGeneratingPodcast || !podcastPrompt.trim()}
+                      disabled={isGeneratingPodcast || !podcastPrompt?.trim()}
                     >
                       {isGeneratingPodcast ? "Generating..." : "Generate"}
                     </Button>
@@ -587,7 +587,7 @@ export default function NotebookDetail() {
                   <Button
                     size="sm"
                     onClick={handleSaveNote}
-                    disabled={!noteTitle.trim() || !noteContent.trim()}
+                    disabled={!noteTitle?.trim() || !noteContent?.trim()}
                   >
                     Save
                   </Button>
@@ -737,7 +737,7 @@ export default function NotebookDetail() {
                 <Button 
                   size="sm"
                   onClick={handleGeneratePodcast}
-                  disabled={isGeneratingPodcast || !podcastPrompt.trim()}
+                  disabled={isGeneratingPodcast || !podcastPrompt?.trim()}
                 >
                   {isGeneratingPodcast ? "Generating..." : "Generate"}
                 </Button>
@@ -831,7 +831,7 @@ export default function NotebookDetail() {
                 <Button
                   size="sm"
                   onClick={handleSaveNote}
-                  disabled={!noteTitle.trim() || !noteContent.trim()}
+                  disabled={!noteTitle?.trim() || !noteContent?.trim()}
                 >
                   Save
                 </Button>
