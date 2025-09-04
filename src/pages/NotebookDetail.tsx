@@ -365,10 +365,10 @@ export default function NotebookDetail() {
       </div>
 
       {/* Desktop Three Panel Layout */}
-      <div className="hidden sm:flex h-[calc(100vh-65px)]">
+      <div className="hidden sm:flex h-[calc(100vh-65px)] gap-1">
         {/* Left Panel - Sources */}
         <div className={cn(
-          "border-r bg-card/50 transition-all duration-300 flex flex-col",
+          "border bg-card/50 transition-all duration-300 flex flex-col rounded-lg shadow-sm",
           isSourceExpanded ? "w-[600px]" : "w-80"
         )}>
           <div className="p-4 border-b">
@@ -448,13 +448,13 @@ export default function NotebookDetail() {
         </div>
 
         {/* Middle Panel - Chat */}
-        <div className="flex-1 border-r">
+        <div className="flex-1 border bg-card rounded-lg shadow-sm">
           <ChatPanel notebookId={notebook.id} />
         </div>
 
         {/* Right Panel - Studio */}
         <div className={cn(
-          "bg-card/50 transition-all duration-300 flex flex-col",
+          "border bg-card/50 transition-all duration-300 flex flex-col rounded-lg shadow-sm",
           isCreatingNote ? "w-[600px]" : "w-96"
         )}>
           {!isCreatingNote ? (
