@@ -40,6 +40,14 @@ export default function NotebookDetail() {
   const [noteContent, setNoteContent] = useState("");
   const [isGeneratingPodcast, setIsGeneratingPodcast] = useState(false);
   const [podcastPrompt, setPodcastPrompt] = useState("");
+  const [showPodcastForm, setShowPodcastForm] = useState(false);
+  const [podcastSettings, setPodcastSettings] = useState({
+    episodeName: "",
+    template: "Deep Dive - get into it",
+    length: "Short (5-10 min)",
+    maxChunks: 5,
+    minChunkSize: 3
+  });
 
   useEffect(() => {
     console.log("NotebookDetail useEffect - notebook:", notebook, "id:", id);
@@ -455,37 +463,23 @@ export default function NotebookDetail() {
         {/* Right Panel - Studio */}
         <div className={cn(
           "bg-card border border-border/50 transition-all duration-300 flex flex-col rounded-xl shadow-lg hover:shadow-xl backdrop-blur-sm",
-          isCreatingNote ? "w-[600px]" : "w-96"
+          (isCreatingNote || showPodcastForm) ? "w-[600px]" : "w-96"
         )}>
-          {!isCreatingNote ? (
+          {!isCreatingNote && !showPodcastForm ? (
             <>
               {/* Studio Header */}
               <div className="p-4 border-b">
                 <h2 className="text-lg font-semibold mb-4">Studio</h2>
                 
-                {/* Action Buttons */}
-                {/* Audio Overview Generation */}
-                <div className="space-y-3 mb-4">
-                  <label className="text-sm font-medium">Create an Audio Overview</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Describe what you want to discuss..."
-                      className="flex-1 px-3 py-2 rounded-lg border bg-background/50 text-sm backdrop-blur-sm"
-                      value={podcastPrompt}
-                      onChange={(e) => setPodcastPrompt(e.target.value)}
-                      disabled={isGeneratingPodcast}
-                    />
-                    <Button 
-                      size="sm"
-                      onClick={handleGeneratePodcast}
-                      disabled={isGeneratingPodcast || !podcastPrompt?.trim()}
-                    >
-                      <AudioLines className="h-4 w-4 mr-1" />
-                      {isGeneratingPodcast ? "Generating..." : "Generate"}
-                    </Button>
-                  </div>
-                </div>
+                {/* Generate Podcast Button */}
+                <Button 
+                  className="w-full mb-4 bg-primary hover:bg-primary/90"
+                  onClick={() => setShowPodcastForm(true)}
+                  disabled={isGeneratingPodcast}
+                >
+                  <AudioLines className="h-4 w-4 mr-2" />
+                  {isGeneratingPodcast ? "Generating Podcast..." : "Generate Podcast"}
+                </Button>
 
                 {/* Create Note Button */}
                 <Button 
@@ -562,6 +556,190 @@ export default function NotebookDetail() {
                 </div>
               </ScrollArea>
             </>
+          ) : showPodcastForm ? (
+            /* Podcast Generation Form */
+            <div className="flex flex-col h-full">
+              <div className="p-4 border-b flex items-center justify-between">
+                <h3 className="font-semibold">Audio Overview - Podcast Generation</h3>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => setShowPodcastForm(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <ScrollArea className="flex-1">
+                <div className="p-6 space-y-6">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Generate a podcast episode from your notebook: <span className="font-semibold">{notebook.name}</span>
+                    </p>
+                  </div>
+
+                  {/* Episode Name */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Episode Name *</label>
+                    <input
+                      type="text"
+                      placeholder="Enter episode name..."
+                      className="w-full px-3 py-2 rounded-lg border bg-background/50"
+                      value={podcastSettings.episodeName}
+                      onChange={(e) => setPodcastSettings({...podcastSettings, episodeName: e.target.value})}
+                    />
+                  </div>
+
+                  {/* Template Selection */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Select Template</label>
+                    <select
+                      className="w-full px-3 py-2 rounded-lg border bg-background/50"
+                      value={podcastSettings.template}
+                      onChange={(e) => setPodcastSettings({...podcastSettings, template: e.target.value})}
+                    >
+                      <option value="Deep Dive - get into it">Deep Dive - get into it</option>
+                      <option value="Quick Summary">Quick Summary</option>
+                      <option value="Educational">Educational</option>
+                      <option value="Conversational">Conversational</option>
+                    </select>
+                  </div>
+
+                  {/* Podcast Length */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Podcast Length</label>
+                    <select
+                      className="w-full px-3 py-2 rounded-lg border bg-background/50"
+                      value={podcastSettings.length}
+                      onChange={(e) => setPodcastSettings({...podcastSettings, length: e.target.value})}
+                    >
+                      <option value="Short (5-10 min)">Short (5-10 min)</option>
+                      <option value="Medium (10-20 min)">Medium (10-20 min)</option>
+                      <option value="Long (20-30 min)">Long (20-30 min)</option>
+                    </select>
+                  </div>
+
+                  {/* Max Number of Chunks */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Max Number of Chunks</label>
+                    <div className="relative">
+                      <input
+                        type="range"
+                        min="1"
+                        max="10"
+                        className="w-full"
+                        value={podcastSettings.maxChunks}
+                        onChange={(e) => setPodcastSettings({...podcastSettings, maxChunks: parseInt(e.target.value)})}
+                      />
+                      <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                        <span>1</span>
+                        <span>{podcastSettings.maxChunks}</span>
+                        <span>10</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Min Chunk Size */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Min Chunk Size</label>
+                    <div className="relative">
+                      <input
+                        type="range"
+                        min="1"
+                        max="10"
+                        className="w-full"
+                        value={podcastSettings.minChunkSize}
+                        onChange={(e) => setPodcastSettings({...podcastSettings, minChunkSize: parseInt(e.target.value)})}
+                      />
+                      <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                        <span>1</span>
+                        <span>{podcastSettings.minChunkSize}</span>
+                        <span>10</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Play Button Placeholder */}
+                  <div className="flex justify-center py-6">
+                    <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center">
+                      <AudioLines className="h-10 w-10 text-muted-foreground" />
+                    </div>
+                  </div>
+
+                  {/* Generate Button */}
+                  <Button 
+                    className="w-full"
+                    onClick={async () => {
+                      if (!podcastSettings.episodeName?.trim()) {
+                        toast({
+                          title: "Episode name required",
+                          description: "Please enter an episode name.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      setIsGeneratingPodcast(true);
+                      try {
+                        await podcastsAPI.generate({
+                          notebook_id: id!,
+                          prompt: `Episode: ${podcastSettings.episodeName}, Template: ${podcastSettings.template}, Length: ${podcastSettings.length}`,
+                        });
+                        toast({
+                          title: "Podcast generation started",
+                          description: "Your podcast is being generated. This may take a few minutes.",
+                        });
+                        setShowPodcastForm(false);
+                        setPodcastSettings({
+                          episodeName: "",
+                          template: "Deep Dive - get into it",
+                          length: "Short (5-10 min)",
+                          maxChunks: 5,
+                          minChunkSize: 3
+                        });
+                        // Poll for updates
+                        const pollInterval = setInterval(async () => {
+                          const updatedPodcasts = await podcastsAPI.list(id!);
+                          setPodcasts(updatedPodcasts);
+                          const generatingPodcast = updatedPodcasts.find(p => p.status === 'generating');
+                          if (!generatingPodcast) {
+                            clearInterval(pollInterval);
+                            setIsGeneratingPodcast(false);
+                          }
+                        }, 3000);
+                      } catch (error) {
+                        toast({
+                          title: "Generation failed",
+                          description: "Failed to generate podcast.",
+                          variant: "destructive",
+                        });
+                        setIsGeneratingPodcast(false);
+                      }
+                    }}
+                    disabled={isGeneratingPodcast || !podcastSettings.episodeName?.trim()}
+                  >
+                    {isGeneratingPodcast ? (
+                      <>
+                        <span className="animate-spin mr-2">⏳</span>
+                        GENERATING...
+                      </>
+                    ) : (
+                      "GENERATE"
+                    )}
+                  </Button>
+
+                  {/* Progress indicator */}
+                  {isGeneratingPodcast && (
+                    <div className="space-y-2">
+                      <div className="w-full bg-muted rounded-full h-2">
+                        <div className="bg-primary h-2 rounded-full animate-pulse" style={{width: '60%'}}></div>
+                      </div>
+                      <p className="text-center text-sm text-muted-foreground">
+                        Generating podcast episode... This may take a few minutes.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
           ) : (
             /* Note Editor */
             <div className="flex flex-col h-full">
