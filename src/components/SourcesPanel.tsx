@@ -201,11 +201,14 @@ export function SourcesPanel({ notebookId }: SourcesPanelProps) {
                         id="file-upload"
                         disabled={loading}
                       />
-                      <label htmlFor="file-upload">
-                        <Button variant="outline" size="sm" asChild disabled={loading}>
-                          <span>Choose Files</span>
-                        </Button>
-                      </label>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        disabled={loading}
+                        onClick={() => document.getElementById('file-upload')?.click()}
+                      >
+                        Choose Files
+                      </Button>
                     </div>
                   </TabsContent>
                   
