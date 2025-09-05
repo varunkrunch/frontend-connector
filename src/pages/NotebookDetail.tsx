@@ -464,19 +464,27 @@ export default function NotebookDetail() {
                 <h2 className="text-lg font-semibold mb-4">Studio</h2>
                 
                 {/* Action Buttons */}
-                <div className="grid grid-cols-2 gap-2 mb-4">
-                  <Button variant="outline" size="sm" className="justify-start">
-                    <AudioLines className="h-4 w-4 mr-2" />
-                    Audio Overview
-                  </Button>
-                  <Button variant="outline" size="sm" className="justify-start">
-                    <Network className="h-4 w-4 mr-2" />
-                    Mind Map
-                  </Button>
-                  <Button variant="outline" size="sm" className="justify-start">
-                    <FileBarChart className="h-4 w-4 mr-2" />
-                    Reports
-                  </Button>
+                {/* Audio Overview Generation */}
+                <div className="space-y-3 mb-4">
+                  <label className="text-sm font-medium">Create an Audio Overview</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Describe what you want to discuss..."
+                      className="flex-1 px-3 py-2 rounded-lg border bg-background/50 text-sm backdrop-blur-sm"
+                      value={podcastPrompt}
+                      onChange={(e) => setPodcastPrompt(e.target.value)}
+                      disabled={isGeneratingPodcast}
+                    />
+                    <Button 
+                      size="sm"
+                      onClick={handleGeneratePodcast}
+                      disabled={isGeneratingPodcast || !podcastPrompt?.trim()}
+                    >
+                      <AudioLines className="h-4 w-4 mr-1" />
+                      {isGeneratingPodcast ? "Generating..." : "Generate"}
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Create Note Button */}
@@ -487,28 +495,6 @@ export default function NotebookDetail() {
                   <FileText className="h-4 w-4 mr-2" />
                   Add note
                 </Button>
-
-                {/* Podcast Generation */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Create an Audio Overview</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Describe what you want to discuss..."
-                      className="flex-1 px-3 py-2 rounded-md border bg-background text-sm"
-                      value={podcastPrompt}
-                      onChange={(e) => setPodcastPrompt(e.target.value)}
-                      disabled={isGeneratingPodcast}
-                    />
-                    <Button 
-                      size="sm"
-                      onClick={handleGeneratePodcast}
-                      disabled={isGeneratingPodcast || !podcastPrompt?.trim()}
-                    >
-                      {isGeneratingPodcast ? "Generating..." : "Generate"}
-                    </Button>
-                  </div>
-                </div>
               </div>
 
               {/* Notes and Podcasts List */}
@@ -698,32 +684,8 @@ export default function NotebookDetail() {
             <h2 className="text-lg font-semibold">Studio</h2>
             
             {/* Action Buttons */}
-            <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" size="sm" className="justify-start">
-                <AudioLines className="h-4 w-4 mr-2" />
-                Audio Overview
-              </Button>
-              <Button variant="outline" size="sm" className="justify-start">
-                <Network className="h-4 w-4 mr-2" />
-                Mind Map
-              </Button>
-              <Button variant="outline" size="sm" className="justify-start">
-                <FileBarChart className="h-4 w-4 mr-2" />
-                Reports
-              </Button>
-            </div>
-
-            {/* Create Note Button */}
-            <Button 
-              className="w-full"
-              onClick={() => setIsCreatingNote(true)}
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              Add note
-            </Button>
-
-            {/* Podcast Generation */}
-            <div className="space-y-2">
+            {/* Audio Overview Generation */}
+            <div className="space-y-3 mb-4">
               <label className="text-sm font-medium">Create an Audio Overview</label>
               <div className="flex gap-2">
                 <input
@@ -739,10 +701,20 @@ export default function NotebookDetail() {
                   onClick={handleGeneratePodcast}
                   disabled={isGeneratingPodcast || !podcastPrompt?.trim()}
                 >
+                  <AudioLines className="h-4 w-4 mr-1" />
                   {isGeneratingPodcast ? "Generating..." : "Generate"}
                 </Button>
               </div>
             </div>
+
+            {/* Create Note Button */}
+            <Button 
+              className="w-full"
+              onClick={() => setIsCreatingNote(true)}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Add note
+            </Button>
 
             {/* Notes and Podcasts */}
             <div className="space-y-4">
