@@ -248,8 +248,8 @@ export function SourcesPanel({ notebookId }: SourcesPanelProps) {
     return (
       <div className="h-full flex flex-col bg-background">
         {/* Source Header */}
-        <div className="p-3 sm:p-4 border-b bg-muted/30">
-          <div className="flex items-start justify-between gap-2">
+        <div className="sticky top-0 z-10 p-3 sm:p-4 border-b bg-background/95 backdrop-blur">
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
               <Button
                 variant="ghost"
@@ -263,8 +263,8 @@ export function SourcesPanel({ notebookId }: SourcesPanelProps) {
                 {getSourceIcon(selectedSource.source_type)}
               </div>
               <div className="flex-1 min-w-0">
-                <h2 className="text-base sm:text-lg font-semibold truncate">{selectedSource.title}</h2>
-                <div className="flex items-center gap-2 mt-0.5">
+                <h2 className="text-sm sm:text-base lg:text-lg font-semibold truncate">{selectedSource.title}</h2>
+                <div className="flex flex-wrap items-center gap-2 mt-0.5">
                   <Badge variant="secondary" className="text-xs">{selectedSource.source_type}</Badge>
                   <span className="text-xs text-muted-foreground">
                     {new Date(selectedSource.created_at).toLocaleDateString()}
@@ -272,30 +272,32 @@ export function SourcesPanel({ notebookId }: SourcesPanelProps) {
                 </div>
               </div>
             </div>
-            {/* Transformation Dropdown */}
-            <Select value={transformation} onValueChange={setTransformation}>
-              <SelectTrigger className="w-[140px] sm:w-[180px] h-8 sm:h-9 text-xs sm:text-sm">
-                <SelectValue placeholder="Apply transformation" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="analyze">Analyze Paper</SelectItem>
-                <SelectItem value="dense">Dense Summary</SelectItem>
-                <SelectItem value="insights">Key Insights</SelectItem>
-                <SelectItem value="reflections">Reflections</SelectItem>
-                <SelectItem value="simple">Simple Summary</SelectItem>
-                <SelectItem value="toc">Table of Contents</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={handleTransformation}
-              disabled={!transformation || loading}
-              className="h-8 sm:h-9 text-xs sm:text-sm"
-            >
-              <Play className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
-              Run
-            </Button>
+            {/* Transformation Controls */}
+            <div className="flex items-center gap-2">
+              <Select value={transformation} onValueChange={setTransformation}>
+                <SelectTrigger className="flex-1 sm:w-[140px] lg:w-[180px] h-8 sm:h-9 text-xs sm:text-sm">
+                  <SelectValue placeholder="Apply transformation" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="analyze">Analyze Paper</SelectItem>
+                  <SelectItem value="dense">Dense Summary</SelectItem>
+                  <SelectItem value="insights">Key Insights</SelectItem>
+                  <SelectItem value="reflections">Reflections</SelectItem>
+                  <SelectItem value="simple">Simple Summary</SelectItem>
+                  <SelectItem value="toc">Table of Contents</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleTransformation}
+                disabled={!transformation || loading}
+                className="h-8 sm:h-9 px-3 text-xs sm:text-sm"
+              >
+                <Play className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                Run
+              </Button>
+            </div>
           </div>
         </div>
         
