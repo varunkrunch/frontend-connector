@@ -316,7 +316,7 @@ Analyze the provided content and create a Table of Contents:
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 animate-slide-in-top">
         <div className="container mx-auto px-4 py-3 sm:py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-3">
@@ -324,11 +324,11 @@ Analyze the provided content and create a Table of Contents:
                 variant="ghost"
                 size="icon"
                 onClick={() => navigate("/")}
-                className="rounded-full"
+                className="rounded-full transition-all duration-200 hover:scale-110 hover:bg-primary/10"
               >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
-              <div className="p-1.5 sm:p-2 bg-primary/10 rounded-xl">
+              <div className="p-1.5 sm:p-2 bg-primary/10 rounded-xl transition-all duration-300 hover:scale-110 hover:bg-primary/20 hover:shadow-md">
                 <SettingsIcon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
               </div>
               <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
@@ -340,52 +340,55 @@ Analyze the provided content and create a Table of Contents:
       </header>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 max-w-7xl animate-slide-in-bottom">
         <Tabs defaultValue="transformations" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="transformations" className="flex items-center gap-2">
-              <Leaf className="h-4 w-4" />
-              Transformations
+          <TabsList className="grid w-full grid-cols-3 h-auto">
+            <TabsTrigger value="transformations" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-3">
+              <Leaf className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden xs:inline">Transformations</span>
+              <span className="xs:hidden">Transform</span>
             </TabsTrigger>
-            <TabsTrigger value="podcast-templates" className="flex items-center gap-2">
-              <Mic className="h-4 w-4" />
-              Podcast Templates
+            <TabsTrigger value="podcast-templates" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-3">
+              <Mic className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden xs:inline">Podcast Templates</span>
+              <span className="xs:hidden">Podcast</span>
             </TabsTrigger>
-            <TabsTrigger value="general" className="flex items-center gap-2">
-              <SettingsIcon className="h-4 w-4" />
+            <TabsTrigger value="general" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-3">
+              <SettingsIcon className="h-3 w-3 sm:h-4 sm:w-4" />
               General
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="transformations" className="mt-6">
-            <div className="space-y-6">
+          <TabsContent value="transformations" className="mt-4 sm:mt-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Header */}
               <div className="flex items-center gap-2">
-                <Leaf className="h-5 w-5 text-green-600" />
-                <h2 className="text-2xl font-bold">Transformations</h2>
+                <Leaf className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+                <h2 className="text-xl sm:text-2xl font-bold">Transformations</h2>
               </div>
-              <p className="text-muted-foreground">
+              <p className="text-sm sm:text-base text-muted-foreground">
                 Transformations are prompts that can be used by the AI to create an automated output (e.g., a summary, key insights, etc.).
               </p>
 
 
               {/* Your Transformations */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold">Your Transformations</h3>
-                  <Button onClick={handleCreateNewTransformation} className="gap-2">
+              <div className="space-y-3 sm:space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <h3 className="text-base sm:text-lg font-semibold">Your Transformations</h3>
+                  <Button onClick={handleCreateNewTransformation} className="gap-2 w-full sm:w-auto">
                     <Plus className="h-4 w-4" />
-                    Create new transformation
+                    <span className="hidden xs:inline">Create new transformation</span>
+                    <span className="xs:hidden">Create new</span>
                   </Button>
                 </div>
                 
                 <div className="space-y-2">
                   {/* New Transformation Form */}
                   {showNewTransformationForm && (
-                    <div className="bg-white border border-border rounded-lg">
+                    <div className="bg-white border border-border rounded-xl">
                       {/* New Transformation Header */}
                       <div 
-                        className="flex items-center justify-between p-4 hover:bg-muted/50 cursor-pointer transition-colors"
+                        className="flex items-center justify-between p-4 hover:bg-muted/50 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-sm"
                         onClick={() => setShowNewTransformationForm(false)}
                       >
                         <span className="font-medium">New Tranformation</span>
@@ -397,54 +400,57 @@ Analyze the provided content and create a Table of Contents:
                       </div>
 
                       {/* New Transformation Content */}
-                      <div className="p-4 border-t border-border">
-                        <div className="space-y-4">
+                      <div className="p-3 sm:p-4 border-t border-border">
+                        <div className="space-y-3 sm:space-y-4">
                           {/* Transformation Name */}
                           <div className="space-y-2">
-                            <Label>Transformation Name</Label>
+                            <Label className="text-sm">Transformation Name</Label>
                             <Input 
                               value={newTransformationName}
                               onChange={(e) => setNewTransformationName(e.target.value)}
                               placeholder="Enter transformation name"
+                              className="text-sm"
                             />
                           </div>
 
                           {/* Card Title */}
                           <div className="space-y-2">
-                            <Label>Card Title (this will be the title of all cards created by this transformation). ie 'Key Topics'</Label>
+                            <Label className="text-sm">Card Title (this will be the title of all cards created by this transformation). ie 'Key Topics'</Label>
                             <Input 
                               value={newTransformationCardTitle}
                               onChange={(e) => setNewTransformationCardTitle(e.target.value)}
                               placeholder="Enter card title"
+                              className="text-sm"
                             />
                           </div>
 
                           {/* Description */}
                           <div className="space-y-2">
-                            <Label>Description (displayed as a hint in the UI so you know what you are selecting)</Label>
+                            <Label className="text-sm">Description (displayed as a hint in the UI so you know what you are selecting)</Label>
                             <Textarea
                               value={newTransformationDescription}
                               onChange={(e) => setNewTransformationDescription(e.target.value)}
                               rows={3}
                               placeholder="Enter description"
+                              className="text-sm"
                             />
                           </div>
 
                           {/* Prompt */}
                           <div className="space-y-2">
-                            <Label>Prompt</Label>
+                            <Label className="text-sm">Prompt</Label>
                             <Textarea
                               value={newTransformationPrompt}
                               onChange={(e) => setNewTransformationPrompt(e.target.value)}
-                              rows={10}
-                              className="font-mono text-sm"
+                              rows={8}
+                              className="font-mono text-xs sm:text-sm"
                               placeholder="Enter your prompt here..."
                             />
                           </div>
 
                           {/* Save Button */}
                           <div className="flex justify-end">
-                            <Button onClick={handleSaveNewTransformation}>
+                            <Button onClick={handleSaveNewTransformation} size="sm" className="w-full sm:w-auto">
                               <Save className="h-4 w-4 mr-2" />
                               Save
                             </Button>
@@ -459,7 +465,7 @@ Analyze the provided content and create a Table of Contents:
                     <div key={transformation.id} className="bg-white border border-border rounded-lg">
                       {/* Transformation Header */}
                       <div
-                        className="flex items-center justify-between p-4 hover:bg-muted/50 cursor-pointer transition-colors"
+                        className="flex items-center justify-between p-4 hover:bg-muted/50 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-sm"
                         onClick={() => handleToggleExpansion(transformation.id)}
                       >
                         <span className="font-medium">
@@ -548,7 +554,7 @@ Analyze the provided content and create a Table of Contents:
                     <div key={index} className="bg-white border border-border rounded-lg">
                       {/* Transformation Header */}
                       <div
-                        className="flex items-center justify-between p-4 hover:bg-muted/50 cursor-pointer transition-colors"
+                        className="flex items-center justify-between p-4 hover:bg-muted/50 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-sm"
                         onClick={() => handleToggleExpansion(transformation.name)}
                       >
                         <span className="font-medium">
@@ -622,53 +628,56 @@ Analyze the provided content and create a Table of Contents:
             </div>
           </TabsContent>
 
-          <TabsContent value="podcast-templates" className="mt-6">
+          <TabsContent value="podcast-templates" className="mt-4 sm:mt-6">
             <Card>
-              <CardHeader>
+              <CardHeader className="p-4 sm:p-6">
                 <div className="flex items-center gap-2">
                   <ArrowLeft className="h-4 w-4" />
-                  <CardTitle>Podcast Templates</CardTitle>
+                  <CardTitle className="text-lg sm:text-xl">Podcast Templates</CardTitle>
                 </div>
-                <CardDescription>Create new Template</CardDescription>
+                <CardDescription className="text-sm">Create new Template</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
                 {/* Template Details */}
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="template-name">Template Name</Label>
+                      <Label htmlFor="template-name" className="text-sm">Template Name</Label>
                       <Input
                         id="template-name"
                         value={templateName}
                         onChange={(e) => setTemplateName(e.target.value)}
                         placeholder="Enter template name"
+                        className="text-sm"
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="podcast-name">Podcast Name</Label>
+                      <Label htmlFor="podcast-name" className="text-sm">Podcast Name</Label>
                       <Input
                         id="podcast-name"
                         value={podcastName}
                         onChange={(e) => setPodcastName(e.target.value)}
                         placeholder="Enter podcast name"
+                        className="text-sm"
                       />
                     </div>
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="podcast-tagline">Podcast Tagline</Label>
+                    <Label htmlFor="podcast-tagline" className="text-sm">Podcast Tagline</Label>
                     <Input
                       id="podcast-tagline"
                       value={podcastTagline}
                       onChange={(e) => setPodcastTagline(e.target.value)}
                       placeholder="Enter podcast tagline"
+                      className="text-sm"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="language">Language</Label>
+                    <Label htmlFor="language" className="text-sm">Language</Label>
                     <Select value={language} onValueChange={setLanguage}>
-                      <SelectTrigger>
+                      <SelectTrigger className="text-sm">
                         <SelectValue placeholder="Select language" />
                       </SelectTrigger>
                       <SelectContent>
@@ -694,7 +703,7 @@ Analyze the provided content and create a Table of Contents:
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <Label>Person 1 roles</Label>
-                      <div className="min-h-[40px] border border-input rounded-md px-3 py-2 bg-background flex flex-wrap gap-2 items-center">
+                      <div className="min-h-[40px] border border-input rounded-xl px-3 py-2 bg-background flex flex-wrap gap-2 items-center">
                         {person1Roles.map((role) => (
                           <Badge key={role} variant="secondary" className="cursor-pointer" onClick={() => handleRemoveRole(role, 'person1')}>
                             {role} ×
@@ -732,7 +741,7 @@ Analyze the provided content and create a Table of Contents:
 
                     <div className="space-y-2">
                       <Label>Person 2 roles</Label>
-                      <div className="min-h-[40px] border border-input rounded-md px-3 py-2 bg-background flex flex-wrap gap-2 items-center">
+                      <div className="min-h-[40px] border border-input rounded-xl px-3 py-2 bg-background flex flex-wrap gap-2 items-center">
                         {person2Roles.map((role) => (
                           <Badge key={role} variant="secondary" className="cursor-pointer" onClick={() => handleRemoveRole(role, 'person2')}>
                             {role} ×
@@ -777,7 +786,7 @@ Analyze the provided content and create a Table of Contents:
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <Label>Conversation Style</Label>
-                      <div className="min-h-[40px] border border-input rounded-md px-3 py-2 bg-background flex flex-wrap gap-2 items-center">
+                      <div className="min-h-[40px] border border-input rounded-xl px-3 py-2 bg-background flex flex-wrap gap-2 items-center">
                         {conversationStyle.map((style) => (
                           <Badge key={style} variant="secondary" className="cursor-pointer" onClick={() => handleRemoveStyle(style, 'conversation')}>
                             {style} ×
@@ -815,7 +824,7 @@ Analyze the provided content and create a Table of Contents:
 
                     <div className="space-y-2">
                       <Label>Engagement Techniques</Label>
-                      <div className="min-h-[40px] border border-input rounded-md px-3 py-2 bg-background flex flex-wrap gap-2 items-center">
+                      <div className="min-h-[40px] border border-input rounded-xl px-3 py-2 bg-background flex flex-wrap gap-2 items-center">
                         {engagementTechniques.map((technique) => (
                           <Badge key={technique} variant="secondary" className="cursor-pointer" onClick={() => handleRemoveStyle(technique, 'engagement')}>
                             {technique} ×
@@ -853,7 +862,7 @@ Analyze the provided content and create a Table of Contents:
 
                     <div className="space-y-2">
                       <Label>Dialogue Structure</Label>
-                      <div className="min-h-[40px] border border-input rounded-md px-3 py-2 bg-background flex flex-wrap gap-2 items-center">
+                      <div className="min-h-[40px] border border-input rounded-xl px-3 py-2 bg-background flex flex-wrap gap-2 items-center">
                         {dialogueStructure.map((structure) => (
                           <Badge key={structure} variant="secondary" className="cursor-pointer" onClick={() => handleRemoveStyle(structure, 'dialogue')}>
                             {structure} ×

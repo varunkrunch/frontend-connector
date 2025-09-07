@@ -468,49 +468,51 @@ export default function NotebookDetail() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="px-4 py-3">
+        <div className="px-3 sm:px-4 py-2 sm:py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => navigate("/")}
                 className="rounded-full shrink-0"
               >
-                <ArrowLeft className="h-4 w-4" />
+                <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
               
-              <div className="min-w-0">
-                <h1 className="text-lg sm:text-xl font-bold truncate">{notebook.name}</h1>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-base sm:text-lg lg:text-xl font-bold truncate">{notebook.name}</h1>
               </div>
             </div>
             
             {/* Desktop Actions */}
-            <div className="hidden sm:flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-2 shrink-0">
               <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={handleExport}
+                className="text-xs lg:text-sm"
               >
-                <Download className="h-4 w-4 mr-2" />
-                Export
+                <Download className="h-3 w-3 lg:h-4 lg:w-4 mr-1 lg:mr-2" />
+                <span className="hidden lg:inline">Export</span>
               </Button>
               <Button 
                 variant="destructive" 
                 size="sm" 
                 onClick={handleDelete}
+                className="text-xs lg:text-sm"
               >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
+                <Trash2 className="h-3 w-3 lg:h-4 lg:w-4 mr-1 lg:mr-2" />
+                <span className="hidden lg:inline">Delete</span>
               </Button>
             </div>
 
             {/* Mobile Menu */}
-            <div className="sm:hidden">
+            <div className="sm:hidden shrink-0">
               <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
                 <SheetTrigger asChild>
                   <Button variant="ghost" size="icon" className="rounded-full">
-                    <Menu className="h-5 w-5" />
+                    <Menu className="h-4 w-4" />
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="right" className="w-[280px]">
@@ -567,30 +569,32 @@ export default function NotebookDetail() {
       </div>
 
       {/* Desktop Three Panel Layout */}
-      <div className="hidden sm:flex h-[calc(100vh-65px)] gap-6 p-6 bg-gradient-to-br from-background via-background to-muted/20">
+      <div className="hidden sm:flex h-[calc(100vh-65px)] gap-3 lg:gap-6 p-3 lg:p-6 bg-gradient-to-br from-background via-background to-muted/20">
         {/* Left Panel - Sources */}
         <div className={cn(
           "bg-card border border-border/50 transition-all duration-300 flex flex-col rounded-xl shadow-lg hover:shadow-xl backdrop-blur-sm",
-          isSourceExpanded && (isCreatingNote || showPodcastForm) ? "flex-1" : isSourceExpanded ? "w-[600px]" : "w-96"
+          isSourceExpanded && (isCreatingNote || showPodcastForm) ? "flex-1" : isSourceExpanded ? "w-[500px] lg:w-[600px]" : "w-80 lg:w-96"
         )}>
           {!isSourceExpanded && (
-          <div className="p-4 border-b">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Sources</h2>
-              <div className="flex gap-2">
+          <div className="p-3 lg:p-4 border-b">
+            <div className="flex items-center justify-between mb-3 lg:mb-4">
+              <h2 className="text-base lg:text-lg font-semibold">Sources</h2>
+              <div className="flex gap-1 lg:gap-2">
                   <Button 
                     size="sm" 
                     variant="outline"
                     onClick={handleAddSourceClick}
+                    className="transition-all duration-200 hover:scale-105 active:scale-95"
                   >
                   <Plus className="h-4 w-4 mr-1" />
                   Add
                 </Button>
-                  <Button 
-                    size="sm" 
+                <Button 
+                  size="sm" 
                     variant="outline"
                     onClick={handleDiscoverClick}
-                  >
+                    className="transition-all duration-200 hover:scale-105 active:scale-95"
+                >
                   Discover
                 </Button>
               </div>
@@ -598,7 +602,7 @@ export default function NotebookDetail() {
             <input
               type="text"
               placeholder="Search sources..."
-              className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+              className="w-full px-3 py-2 rounded-xl border bg-background text-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -683,10 +687,10 @@ export default function NotebookDetail() {
                   {showAddSourceForm && (
                     <div className="space-y-6">
                       {/* Source Type Tabs */}
-                      <div className="flex space-x-1 bg-muted p-1 rounded-lg">
+                      <div className="flex space-x-1 bg-muted p-1 rounded-xl">
                         <button
                           onClick={() => setSourceType("upload")}
-                          className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                          className={`flex-1 py-2 px-3 rounded-xl text-sm font-medium transition-colors ${
                             sourceType === "upload"
                               ? "bg-background text-foreground shadow-sm"
                               : "text-muted-foreground hover:text-foreground"
@@ -696,7 +700,7 @@ export default function NotebookDetail() {
                         </button>
                         <button
                           onClick={() => setSourceType("link")}
-                          className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                          className={`flex-1 py-2 px-3 rounded-xl text-sm font-medium transition-colors ${
                             sourceType === "link"
                               ? "bg-background text-foreground shadow-sm"
                               : "text-muted-foreground hover:text-foreground"
@@ -706,7 +710,7 @@ export default function NotebookDetail() {
                         </button>
                         <button
                           onClick={() => setSourceType("text")}
-                          className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                          className={`flex-1 py-2 px-3 rounded-xl text-sm font-medium transition-colors ${
                             sourceType === "text"
                               ? "bg-background text-foreground shadow-sm"
                               : "text-muted-foreground hover:text-foreground"
@@ -718,7 +722,7 @@ export default function NotebookDetail() {
 
                       {sourceType === "upload" && (
                         <div className="space-y-4">
-                          <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
+                          <div className="border-2 border-dashed border-muted-foreground/25 rounded-xl p-8 text-center">
                             <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
                             <p className="text-lg font-medium mb-2">Drop files here or click to browse</p>
                             <div className="flex items-center justify-center gap-3">
@@ -869,7 +873,7 @@ export default function NotebookDetail() {
                         <div className="space-y-4">
                           {/* Show all results in collapsible format */}
                           {Object.entries(transformationResults).map(([transformation, result]) => (
-                            <div key={transformation} className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                            <div key={transformation} className="p-3 bg-primary/5 border border-primary/20 rounded-xl">
                               <details className="group">
                                 <summary className="font-semibold text-sm text-primary cursor-pointer list-none flex items-center justify-between">
                                   <span>{transformation} Result</span>
@@ -894,7 +898,7 @@ export default function NotebookDetail() {
                           ))}
 
                           {/* Original Source Content */}
-                          <div className="p-3 bg-muted/20 rounded-lg">
+                          <div className="p-3 bg-muted/20 rounded-xl">
                             <details className="group">
                               <summary className="font-semibold text-sm cursor-pointer list-none flex items-center justify-between">
                                 <span>Original Content</span>
@@ -1233,7 +1237,7 @@ export default function NotebookDetail() {
                   </Button>
                 </div>
               </div>
-              <div className="flex-1 p-4 space-y-4">
+              <div className="flex-1 p-4 space-y-4 flex flex-col">
                 <input
                   type="text"
                   placeholder="Note title..."
@@ -1243,7 +1247,7 @@ export default function NotebookDetail() {
                 />
                 <textarea
                   placeholder="Start writing your note..."
-                  className="w-full flex-1 px-3 py-2 rounded-lg border bg-background/50 resize-none min-h-[400px] backdrop-blur-sm"
+                  className="w-full flex-1 px-3 py-2 rounded-lg border bg-background/50 resize-none min-h-[500px] backdrop-blur-sm"
                   value={noteContent}
                   onChange={(e) => setNoteContent(e.target.value)}
                 />
@@ -1253,28 +1257,32 @@ export default function NotebookDetail() {
         </div>
       </div>
 
-      {/* Mobile Content */}
+      {/* Mobile Content - Unified Layout */}
       <div className="sm:hidden">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-           <TabsContent value="sources" className="mt-0 h-[calc(100vh-200px)] overflow-hidden">
-             <div className="flex flex-col h-full">
-               <div className="p-4 space-y-4 border-b bg-background/50">
+          <TabsContent value="sources" className="mt-0 h-[calc(100vh-200px)] overflow-hidden rounded-xl">
+            <div className="flex flex-col h-full">
+              {/* Sources Panel Header - Only show when not expanded */}
+              {!isSourceExpanded && (
+                <div className="p-4 space-y-4 border-b bg-background/50">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Sources</h2>
               <div className="flex gap-2">
-                     <Button 
-                       size="sm" 
-                       variant="outline"
-                       onClick={handleAddSourceClick}
-                     >
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={handleAddSourceClick}
+                    className="transition-all duration-200 hover:scale-105 active:scale-95"
+                  >
                   <Plus className="h-4 w-4 mr-1" />
                   Add
                 </Button>
-                     <Button 
-                       size="sm" 
-                       variant="outline"
-                       onClick={handleDiscoverClick}
-                     >
+                <Button 
+                  size="sm" 
+                    variant="outline"
+                    onClick={handleDiscoverClick}
+                    className="transition-all duration-200 hover:scale-105 active:scale-95"
+                >
                   Discover
                 </Button>
               </div>
@@ -1282,14 +1290,215 @@ export default function NotebookDetail() {
             <input
               type="text"
               placeholder="Search sources..."
-                   className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
+                    className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-               </div>
-               
-               <ScrollArea className="flex-1">
-                 <div className="p-4">
+                </div>
+              )}
+
+              {/* Add Source Form */}
+              {showAddSourceForm && (
+                <div className="p-4 border-b bg-muted/30">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold">Add Source</h3>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowAddSourceForm(false)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  <Tabs value={sourceType} onValueChange={(value) => setSourceType(value as "link" | "upload" | "text")} className="w-full">
+                    <TabsList className="grid w-full grid-cols-3">
+                      <TabsTrigger value="upload" className="flex items-center gap-2">
+                        <Upload className="h-4 w-4" />
+                        Upload
+                      </TabsTrigger>
+                      <TabsTrigger value="link" className="flex items-center gap-2">
+                        <Link className="h-4 w-4" />
+                        URL
+                      </TabsTrigger>
+                      <TabsTrigger value="text" className="flex items-center gap-2">
+                        <Type className="h-4 w-4" />
+                        Text
+                      </TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="upload" className="mt-4">
+                      <div className="space-y-4">
+                        <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
+                          <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                          <p className="text-sm text-muted-foreground">Drag and drop files here or click to browse</p>
+                        </div>
+                        <Button className="w-full">
+                          <Upload className="h-4 w-4 mr-2" />
+                          Choose Files
+                        </Button>
+                      </div>
+                    </TabsContent>
+                    
+                    <TabsContent value="link" className="mt-4">
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="url">URL</Label>
+                          <Input
+                            id="url"
+                            type="url"
+                            placeholder="https://example.com"
+                            value={urlInput}
+                            onChange={(e) => setUrlInput(e.target.value)}
+                          />
+                        </div>
+                        <Button className="w-full">
+                          <Link className="h-4 w-4 mr-2" />
+                          Add URL
+                        </Button>
+                      </div>
+                    </TabsContent>
+                    
+                    <TabsContent value="text" className="mt-4">
+                      <div className="space-y-4">
+                        <div>
+                          <Label htmlFor="text">Text Content</Label>
+                          <Textarea
+                            id="text"
+                            placeholder="Paste your text here..."
+                            value={textInput}
+                            onChange={(e) => setTextInput(e.target.value)}
+                            rows={6}
+                          />
+                        </div>
+                        <Button className="w-full">
+                          <Type className="h-4 w-4 mr-2" />
+                          Add Text
+                        </Button>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </div>
+              )}
+
+              {/* Discover Form */}
+              {showDiscoverForm && (
+                <div className="p-4 border-b bg-muted/30">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold">Discover Sources</h3>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowDiscoverForm(false)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="discover">Search Query</Label>
+                      <Input
+                        id="discover"
+                        placeholder="What are you looking for?"
+                        value={discoverQuery}
+                        onChange={(e) => setDiscoverQuery(e.target.value)}
+                      />
+                    </div>
+                    <Button className="w-full">
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Discover Sources
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Source Content - Show when source is selected */}
+              {selectedSource && (
+                <div className="p-4 border-b bg-muted/30">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold truncate">{selectedSource.title}</h3>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleCloseSourceView}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  {/* Transformation Controls */}
+                  <div className="flex items-center gap-3 p-2 bg-muted/30 rounded-lg mb-4">
+                    <Select value={selectedTransformation} onValueChange={setSelectedTransformation}>
+                      <SelectTrigger className="w-[200px]">
+                        <SelectValue placeholder="Apply transformation" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Analyze Paper">Analyze Paper</SelectItem>
+                        <SelectItem value="Dense Summary">Dense Summary</SelectItem>
+                        <SelectItem value="Key Insights">Key Insights</SelectItem>
+                        <SelectItem value="Reflections">Reflections</SelectItem>
+                        <SelectItem value="Simple Summary">Simple Summary</SelectItem>
+                        <SelectItem value="Table of Contents">Table of Contents</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      onClick={handleTransformationRun}
+                      disabled={!selectedTransformation}
+                      size="sm"
+                    >
+                      <Play className="h-4 w-4 mr-1" />
+                      Run
+                    </Button>
+                  </div>
+
+                  {/* Transformation Results */}
+                  {Object.entries(transformationResults).map(([transformation, result]) => (
+                    <div key={transformation} className="p-3 bg-primary/5 border border-primary/20 rounded-lg mb-3">
+                      <details className="group">
+                        <summary className="font-semibold text-sm text-primary cursor-pointer list-none flex items-center justify-between">
+                          <span>{transformation} Result</span>
+                          <span className="group-open:rotate-180 transition-transform">▼</span>
+                        </summary>
+                        <div className="mt-2 pt-2 border-t border-primary/20">
+                          <p className="text-sm whitespace-pre-wrap max-h-32 overflow-y-auto mb-3">
+                            {result}
+                          </p>
+                          <Button
+                            onClick={() => handleSaveAsNote(transformation, result)}
+                            size="sm"
+                            variant="outline"
+                            className="w-full"
+                          >
+                            <FileText className="h-4 w-4 mr-2" />
+                            Save as Note
+                          </Button>
+                        </div>
+                      </details>
+                    </div>
+                  ))}
+
+                  {/* Original Content */}
+                  <div className="p-3 bg-muted/20 rounded-lg">
+                    <details className="group">
+                      <summary className="font-semibold text-sm cursor-pointer list-none flex items-center justify-between">
+                        <span>Original Content</span>
+                        <span className="group-open:rotate-180 transition-transform">▼</span>
+                      </summary>
+                      <div className="mt-2 pt-2 border-t">
+                        <p className="text-sm whitespace-pre-wrap max-h-32 overflow-y-auto">
+                          {selectedSource.content || "No content available"}
+                        </p>
+                      </div>
+                    </details>
+                  </div>
+                </div>
+              )}
+
+              {/* Sources List - Only show when not expanded */}
+              {!isSourceExpanded && (
+                <ScrollArea className="flex-1">
+                  <div className="p-4">
             <div className="space-y-2">
               {sources.length > 0 ? (
                 sources.map((source) => (
@@ -1298,16 +1507,16 @@ export default function NotebookDetail() {
                     className="p-3 cursor-pointer hover:bg-accent/50 transition-colors"
                     onClick={() => handleSourceSelect(source)}
                   >
-                           <div className="flex items-start justify-between">
+                            <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
-                               <div className="flex items-center gap-2 mb-1">
-                                 <span className="text-lg">{getSourceIcon(source.source_type)}</span>
-                                 <p className="font-medium text-sm truncate">{source.title}</p>
-                               </div>
-                               <p className="text-xs text-muted-foreground line-clamp-2">
-                                 {source.content || "No content available"}
-                               </p>
-                               <p className="text-xs text-muted-foreground mt-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-lg">{getSourceIcon(source.source_type)}</span>
+                                  <p className="font-medium text-sm truncate">{source.title}</p>
+                                </div>
+                                <p className="text-xs text-muted-foreground line-clamp-2">
+                                  {source.content || "No content available"}
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">
                           {new Date(source.created_at).toLocaleDateString()}
                         </p>
                       </div>
@@ -1316,13 +1525,13 @@ export default function NotebookDetail() {
                 ))
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
-                         <FileText className="h-12 w-12 mx-auto mb-4" />
-                         <p className="text-sm mb-2">No sources yet</p>
-                         <p className="text-xs mb-4">Add your first source to get started</p>
+                          <FileText className="h-12 w-12 mx-auto mb-4" />
+                          <p className="text-sm mb-2">No sources yet</p>
+                          <p className="text-xs mb-4">Add your first source to get started</p>
                   <Button 
                     size="sm" 
                     variant="outline" 
-                           onClick={handleAddSourceClick}
+                            onClick={handleAddSourceClick}
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add First Source
@@ -1330,61 +1539,283 @@ export default function NotebookDetail() {
                 </div>
               )}
             </div>
-                 </div>
-               </ScrollArea>
+                  </div>
+                </ScrollArea>
+              )}
           </div>
         </TabsContent>
 
         <TabsContent value="chat" className="mt-0">
-          <div className="h-[calc(100vh-200px)]">
+          <div className="h-[calc(100vh-200px)] rounded-xl overflow-hidden">
             <ChatPanel notebookId={notebook.id} onNoteSaved={loadData} />
           </div>
         </TabsContent>
 
-        <TabsContent value="studio" className="mt-0 h-[calc(100vh-200px)] overflow-hidden">
+        <TabsContent value="studio" className="mt-0 h-[calc(100vh-200px)] overflow-hidden rounded-xl">
           <div className="flex flex-col h-full">
-            <div className="p-4 space-y-4 border-b bg-background/50">
+            {!isCreatingNote && !showPodcastForm ? (
+              <>
+                {/* Studio Header */}
+                <div className="p-4 space-y-4 border-b bg-background/50">
             <h2 className="text-lg font-semibold">Studio</h2>
             
-            {/* Action Buttons */}
-            {/* Audio Overview Generation */}
-            <div className="space-y-3 mb-4">
-              <label className="text-sm font-medium">Create an Audio Overview</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Describe what you want to discuss..."
-                  className="flex-1 px-3 py-2 rounded-lg border bg-background/50 text-sm backdrop-blur-sm"
-                  value={podcastPrompt}
-                  onChange={(e) => setPodcastPrompt(e.target.value)}
-                  disabled={isGeneratingPodcast}
-                />
+                  {/* Generate Podcast Button */}
                 <Button 
-                  size="sm"
-                  onClick={handleGeneratePodcast}
-                  disabled={isGeneratingPodcast || !podcastPrompt?.trim()}
-                >
-                  <AudioLines className="h-4 w-4 mr-1" />
-                  {isGeneratingPodcast ? "Generating..." : "Generate"}
+                    className="w-full mb-4 bg-primary hover:bg-primary/90"
+                    onClick={() => setShowPodcastForm(true)}
+                    disabled={isGeneratingPodcast}
+                  >
+                    <AudioLines className="h-4 w-4 mr-2" />
+                    {isGeneratingPodcast ? "Generating Podcast..." : "Generate Podcast"}
                 </Button>
-              </div>
-            </div>
 
             {/* Create Note Button */}
             <Button 
-              className="w-full"
+                    className="w-full mb-4"
               onClick={() => setIsCreatingNote(true)}
             >
               <FileText className="h-4 w-4 mr-2" />
               Add note
             </Button>
+                </div>
+              </>
+            ) : showPodcastForm ? (
+              /* Podcast Generation Form */
+              <div className="flex flex-col h-full">
+                <div className="p-4 border-b flex items-center justify-between">
+                  <h3 className="font-semibold">Audio Overview - Podcast Generation</h3>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => setShowPodcastForm(false)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <ScrollArea className="flex-1">
+                  <div className="p-4 space-y-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Generate a podcast episode from your notebook: <span className="font-semibold">{notebook.name}</span>
+                      </p>
+                    </div>
 
-            </div>
-            
-            {/* Scrollable Notes and Podcasts Section */}
-            <ScrollArea className="flex-1">
-              <div className="p-4">
+                    {/* Episode Name */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Episode Name *</label>
+                <input
+                  type="text"
+                        placeholder="Enter episode name..."
+                        className="w-full px-3 py-2 rounded-lg border bg-background/50 text-sm"
+                        value={podcastSettings.episodeName}
+                        onChange={(e) => setPodcastSettings({...podcastSettings, episodeName: e.target.value})}
+                      />
+                    </div>
+
+                    {/* Template Selection */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Select Template</label>
+                      <select
+                        className="w-full px-3 py-2 rounded-lg border bg-background/50 text-sm"
+                        value={podcastSettings.template}
+                        onChange={(e) => setPodcastSettings({...podcastSettings, template: e.target.value})}
+                      >
+                        <option value="Deep Dive - get into it">Deep Dive - get into it</option>
+                        <option value="Quick Summary">Quick Summary</option>
+                        <option value="Educational">Educational</option>
+                        <option value="Conversational">Conversational</option>
+                      </select>
+                    </div>
+
+                    {/* Podcast Length */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Podcast Length</label>
+                      <select
+                        className="w-full px-3 py-2 rounded-lg border bg-background/50 text-sm"
+                        value={podcastSettings.length}
+                        onChange={(e) => setPodcastSettings({...podcastSettings, length: e.target.value})}
+                      >
+                        <option value="Short (5-10 min)">Short (5-10 min)</option>
+                        <option value="Medium (10-20 min)">Medium (10-20 min)</option>
+                        <option value="Long (20-30 min)">Long (20-30 min)</option>
+                      </select>
+                    </div>
+
+                    {/* Max Number of Chunks */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Max Number of Chunks</label>
+                      <div className="relative">
+                        <input
+                          type="range"
+                          min="1"
+                          max="10"
+                          className="w-full"
+                          value={podcastSettings.maxChunks}
+                          onChange={(e) => setPodcastSettings({...podcastSettings, maxChunks: parseInt(e.target.value)})}
+                        />
+                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                          <span>1</span>
+                          <span>{podcastSettings.maxChunks}</span>
+                          <span>10</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Min Chunk Size */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Min Chunk Size</label>
+                      <div className="relative">
+                        <input
+                          type="range"
+                          min="1"
+                          max="10"
+                          className="w-full"
+                          value={podcastSettings.minChunkSize}
+                          onChange={(e) => setPodcastSettings({...podcastSettings, minChunkSize: parseInt(e.target.value)})}
+                        />
+                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                          <span>1</span>
+                          <span>{podcastSettings.minChunkSize}</span>
+                          <span>10</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Play Button Placeholder */}
+                    <div className="flex justify-center py-4">
+                      <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                        <AudioLines className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                    </div>
+
+                    {/* Generate Button */}
+                    <Button 
+                      className="w-full"
+                      onClick={async () => {
+                        if (!podcastSettings.episodeName?.trim()) {
+                          toast({
+                            title: "Episode name required",
+                            description: "Please enter an episode name.",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                        setIsGeneratingPodcast(true);
+                        try {
+                          await podcastsAPI.generate({
+                            notebook_id: id!,
+                            prompt: `Episode: ${podcastSettings.episodeName}, Template: ${podcastSettings.template}, Length: ${podcastSettings.length}`,
+                          });
+                          toast({
+                            title: "Podcast generation started",
+                            description: "Your podcast is being generated. This may take a few minutes.",
+                          });
+                          setShowPodcastForm(false);
+                          setPodcastSettings({
+                            episodeName: "",
+                            template: "Deep Dive - get into it",
+                            length: "Short (5-10 min)",
+                            maxChunks: 5,
+                            minChunkSize: 3
+                          });
+                          // Poll for updates
+                          const pollInterval = setInterval(async () => {
+                            const updatedPodcasts = await podcastsAPI.list(id!);
+                            setPodcasts(updatedPodcasts);
+                            const generatingPodcast = updatedPodcasts.find(p => p.status === 'generating');
+                            if (!generatingPodcast) {
+                              clearInterval(pollInterval);
+                              setIsGeneratingPodcast(false);
+                            }
+                          }, 3000);
+                        } catch (error) {
+                          toast({
+                            title: "Generation failed",
+                            description: "Failed to generate podcast.",
+                            variant: "destructive",
+                          });
+                          setIsGeneratingPodcast(false);
+                        }
+                      }}
+                      disabled={isGeneratingPodcast || !podcastSettings.episodeName?.trim()}
+                    >
+                      {isGeneratingPodcast ? (
+                        <>
+                          <span className="animate-spin mr-2">⏳</span>
+                          GENERATING...
+                        </>
+                      ) : (
+                        "GENERATE"
+                      )}
+                    </Button>
+
+                    {/* Progress indicator */}
+                    {isGeneratingPodcast && (
+                      <div className="space-y-2">
+                        <div className="w-full bg-muted rounded-full h-2">
+                          <div className="bg-primary h-2 rounded-full animate-pulse" style={{width: '60%'}}></div>
+                        </div>
+                        <p className="text-center text-sm text-muted-foreground">
+                          Generating podcast episode... This may take a few minutes.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
+            ) : (
+              /* Note Editor */
+              <div className="flex flex-col h-full">
+                <div className="p-4 border-b flex items-center justify-between">
+                  <h3 className="font-semibold">
+                    {expandedNoteId ? "Edit Note" : "New Note"}
+                  </h3>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={handleSaveNote}
+                      disabled={!noteTitle?.trim() || !noteContent?.trim()}
+                    >
+                      Save
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => {
+                        setIsCreatingNote(false);
+                        setExpandedNoteId(null);
+                        setNoteTitle("");
+                        setNoteContent("");
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex-1 p-4 space-y-4 flex flex-col">
+                  <input
+                    type="text"
+                    placeholder="Note title..."
+                    className="w-full px-3 py-2 rounded-lg border bg-background/50 font-semibold text-sm"
+                    value={noteTitle}
+                    onChange={(e) => setNoteTitle(e.target.value)}
+                  />
+                  <textarea
+                    placeholder="Start writing your note..."
+                    className="w-full flex-1 px-3 py-2 rounded-lg border bg-background/50 resize-none text-sm min-h-[400px]"
+                    value={noteContent}
+                    onChange={(e) => setNoteContent(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Notes and Podcasts List - Only show when not in form mode */}
+            {!isCreatingNote && !showPodcastForm && (
+              <ScrollArea className="flex-1">
+                <div className="p-4">
             <div className="space-y-4">
+                    {/* Recent Notes */}
               {notes.length > 0 ? (
                 <div>
                   <h3 className="text-sm font-semibold mb-2">Recent Notes</h3>
@@ -1425,6 +1856,7 @@ export default function NotebookDetail() {
                 </div>
               )}
 
+                    {/* Recent Podcasts */}
               {podcasts.length > 0 ? (
                 <div>
                   <h3 className="text-sm font-semibold mb-2">Generated Podcasts</h3>
@@ -1453,8 +1885,9 @@ export default function NotebookDetail() {
                 </div>
               )}
             </div>
-              </div>
-            </ScrollArea>
+                </div>
+              </ScrollArea>
+            )}
           </div>
         </TabsContent>
         </Tabs>
@@ -1490,7 +1923,7 @@ export default function NotebookDetail() {
                 </Button>
               </div>
             </div>
-            <div className="flex-1 p-4 space-y-4">
+            <div className="flex-1 p-4 space-y-4 flex flex-col">
               <input
                 type="text"
                 placeholder="Note title..."
@@ -1500,7 +1933,7 @@ export default function NotebookDetail() {
               />
               <textarea
                 placeholder="Start writing your note..."
-                className="w-full flex-1 px-3 py-2 rounded-lg border bg-background/50 resize-none backdrop-blur-sm"
+                className="w-full flex-1 px-3 py-2 rounded-lg border bg-background/50 resize-none backdrop-blur-sm min-h-[400px]"
                 value={noteContent}
                 onChange={(e) => setNoteContent(e.target.value)}
               />

@@ -52,21 +52,21 @@ export default function CreateNotebook() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container max-w-2xl mx-auto py-6 sm:py-12 px-4">
+      <div className="container max-w-2xl mx-auto py-6 sm:py-12 px-4 animate-slide-in-bottom">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => navigate("/")}
-            className="mb-4"
+            className="mb-4 transition-all duration-200 hover:scale-105"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Notebooks
           </Button>
           
           <div className="flex items-center gap-2 sm:gap-3 mb-2">
-            <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg">
+            <div className="p-1.5 sm:p-2 bg-primary/10 rounded-xl transition-all duration-300 hover:scale-110 hover:bg-primary/20 hover:shadow-md">
               <Brain className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold">Create New Notebook</h1>
@@ -111,7 +111,7 @@ export default function CreateNotebook() {
               <Button
                 onClick={handleCreate}
                 disabled={isCreating || !name.trim()}
-                className="flex-1 order-2 sm:order-1"
+                className="flex-1 order-2 sm:order-1 transition-all duration-300 hover:scale-105 hover:shadow-lg active:scale-95 disabled:opacity-50"
               >
                 {isCreating ? (
                   <>Creating...</>
@@ -126,7 +126,7 @@ export default function CreateNotebook() {
                 variant="outline"
                 onClick={() => navigate("/")}
                 disabled={isCreating}
-                className="order-1 sm:order-2"
+                className="order-1 sm:order-2 transition-all duration-200 hover:scale-105 active:scale-95"
               >
                 Cancel
               </Button>
@@ -135,7 +135,7 @@ export default function CreateNotebook() {
         </Card>
 
         {/* Tips */}
-        <div className="mt-6 sm:mt-8 p-4 bg-muted/50 rounded-lg">
+        <div className="mt-6 sm:mt-8 p-4 bg-muted/50 rounded-xl">
           <h3 className="font-semibold mb-2 text-sm">Tips for organizing notebooks:</h3>
           <ul className="text-xs sm:text-sm text-muted-foreground space-y-1">
             <li>• Use descriptive names that clearly identify the topic</li>

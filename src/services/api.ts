@@ -40,6 +40,8 @@ const initializeMockData = () => {
     ];
     localStorage.setItem(STORAGE_KEYS.notebooks, JSON.stringify(initialNotebooks));
     console.log("Initial notebooks created:", initialNotebooks);
+  } else {
+    console.log("Notebooks already exist in localStorage");
   }
 
   if (!localStorage.getItem(STORAGE_KEYS.sources)) {
@@ -110,7 +112,10 @@ const saveToStorage = (key: string, data: any) => {
 export const notebookAPI = {
   list: async () => {
     await delay(300);
-    return getFromStorage(STORAGE_KEYS.notebooks);
+    console.log("notebookAPI.list called");
+    const notebooks = getFromStorage(STORAGE_KEYS.notebooks);
+    console.log("Retrieved notebooks from storage:", notebooks);
+    return notebooks;
   },
   
   create: async (data: any) => {

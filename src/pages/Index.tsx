@@ -15,6 +15,8 @@ const Index = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  console.log("Index component rendered, loading:", loading, "notebooks:", notebooks);
+
   useEffect(() => {
     loadNotebooks();
   }, []);
@@ -22,9 +24,10 @@ const Index = () => {
   const loadNotebooks = async () => {
     try {
       setLoading(true);
+      console.log("Loading notebooks...");
       const data = await notebookAPI.list();
       console.log("Loaded notebooks:", data);
-      setNotebooks(data);
+      setNotebooks(data || []);
     } catch (error) {
       console.error("Error loading notebooks:", error);
       toast({
@@ -78,38 +81,38 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 py-3 sm:py-4">
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 animate-slide-in-top">
+        <div className="container mx-auto px-3 sm:px-4 py-2 sm:py-3 lg:py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="p-1.5 sm:p-2 bg-primary/10 rounded-xl">
-                <BookOpen className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+              <div className="p-1 sm:p-1.5 lg:p-2 bg-primary/10 rounded-xl shrink-0 transition-all duration-300 hover:scale-110 hover:bg-primary/20 hover:shadow-md">
+                <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-primary" />
               </div>
-              <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+              <h1 className="text-lg sm:text-xl lg:text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent truncate">
                 NotebookLM
               </h1>
             </div>
             
             {/* Desktop Navigation */}
-            <div className="hidden sm:flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="rounded-full" onClick={() => navigate("/settings")}>
-                <Settings className="h-5 w-5" />
+            <div className="hidden sm:flex items-center gap-2 shrink-0">
+              <Button variant="ghost" size="icon" className="rounded-full transition-all duration-200 hover:scale-110 hover:bg-primary/10" onClick={() => navigate("/settings")}>
+                <Settings className="h-4 w-4 lg:h-5 lg:w-5" />
               </Button>
-              <div className="h-8 w-px bg-border" />
-              <Button variant="ghost" size="sm" className="gap-2">
+              <div className="h-6 lg:h-8 w-px bg-border" />
+              <Button variant="ghost" size="sm" className="gap-2 text-xs lg:text-sm">
                 PRO
               </Button>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <User className="h-5 w-5" />
+              <Button variant="ghost" size="icon" className="rounded-full transition-all duration-200 hover:scale-110 hover:bg-primary/10">
+                <User className="h-4 w-4 lg:h-5 lg:w-5" />
               </Button>
             </div>
 
             {/* Mobile Navigation */}
-            <div className="sm:hidden">
+            <div className="sm:hidden shrink-0">
               <Sheet>
                 <SheetTrigger asChild>
                   <Button variant="ghost" size="icon" className="rounded-full">
-                    <Menu className="h-5 w-5" />
+                    <Menu className="h-4 w-4" />
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="right" className="w-[280px] sm:w-[350px]">
@@ -120,7 +123,11 @@ const Index = () => {
                       </div>
                       <h2 className="text-lg font-semibold">NotebookLM</h2>
                     </div>
-                    <Button variant="ghost" className="justify-start gap-3">
+                    <Button 
+                      variant="ghost" 
+                      className="justify-start gap-3"
+                      onClick={() => navigate("/settings")}
+                    >
                       <Settings className="h-5 w-5" />
                       Settings
                     </Button>
@@ -140,18 +147,30 @@ const Index = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-6 sm:py-8">
-        <div className="mb-6 sm:mb-8">
-          <h2 className="text-2xl sm:text-3xl font-bold mb-2">Recent notebooks</h2>
+      <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8 max-w-7xl animate-slide-in-bottom">
+        <div className="mb-4 sm:mb-6 lg:mb-8">
+          <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-2">Recent notebooks</h2>
           <p className="text-sm sm:text-base text-muted-foreground">Organize your sources, notes, and ideas in one place</p>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-16 sm:py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <div className="flex items-center justify-center py-12 sm:py-16 lg:py-20">
+            <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary" />
+          </div>
+        ) : notebooks.length === 0 ? (
+          <div className="text-center py-12 sm:py-16 lg:py-20">
+            <div className="p-3 sm:p-4 bg-muted/50 rounded-full w-fit mx-auto mb-4">
+              <BookOpen className="h-6 w-6 sm:h-8 sm:w-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-base sm:text-lg lg:text-xl font-semibold mb-2">No notebooks yet</h3>
+            <p className="text-sm sm:text-base text-muted-foreground mb-4 sm:mb-6">Create your first notebook to get started</p>
+            <Button onClick={() => navigate("/create-notebook")} className="gap-2 w-full sm:w-auto transition-all duration-300 hover:scale-105 hover:shadow-lg active:scale-95">
+              <Plus className="h-4 w-4" />
+              Create Notebook
+            </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
             {/* Create New Notebook Card */}
             <Card 
               className="group hover:shadow-xl transition-all duration-300 cursor-pointer hover:scale-105 border-dashed border-2 bg-muted/10"
@@ -167,10 +186,11 @@ const Index = () => {
 
             {/* Notebook Cards */}
             {notebooks.map((notebook, index) => (
-              <Card 
-                key={notebook.id} 
-                className="group hover:shadow-xl transition-all duration-300 cursor-pointer hover:scale-105 relative overflow-hidden"
-              >
+            <Card 
+              key={notebook.id} 
+              className="group hover:shadow-xl transition-all duration-300 cursor-pointer hover:scale-105 relative overflow-hidden animate-fade-in-scale"
+              style={{ animationDelay: `${index * 0.1}s` }}
+            >
                 <div className="absolute top-2 right-2 z-10">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>

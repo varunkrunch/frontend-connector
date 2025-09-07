@@ -133,12 +133,13 @@ export function ChatPanel({ notebookId, onNoteSaved }: ChatPanelProps) {
   };
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <>
+      <div className="h-full flex flex-col overflow-hidden pb-20 rounded-xl">
       {/* Chat Header */}
-      <div className="p-3 sm:p-4 border-b border-border bg-card/80 backdrop-blur-sm">
+      <div className="p-3 sm:p-4 border-b border-border bg-card/80 backdrop-blur-sm rounded-t-xl">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="p-1.5 sm:p-2 bg-gradient-to-br from-primary to-primary/70 rounded-lg">
+            <div className="p-1.5 sm:p-2 bg-gradient-to-br from-primary to-primary/70 rounded-xl">
               <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-primary-foreground" />
             </div>
             <div>
@@ -173,28 +174,28 @@ export function ChatPanel({ notebookId, onNoteSaved }: ChatPanelProps) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-2xl mx-auto">
                   <Button
                     variant="outline"
-                    className="justify-start text-xs sm:text-sm h-auto py-2 px-3"
+                    className="justify-start text-xs sm:text-sm h-auto py-2 px-3 transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
                     onClick={() => setInput("Summarize all my sources")}
                   >
                     Summarize all my sources
                   </Button>
                   <Button
                     variant="outline"
-                    className="justify-start text-xs sm:text-sm h-auto py-2 px-3"
+                    className="justify-start text-xs sm:text-sm h-auto py-2 px-3 transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
                     onClick={() => setInput("What are the key insights?")}
                   >
                     What are the key insights?
                   </Button>
                   <Button
                     variant="outline"
-                    className="justify-start text-xs sm:text-sm h-auto py-2 px-3"
+                    className="justify-start text-xs sm:text-sm h-auto py-2 px-3 transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
                     onClick={() => setInput("Generate study questions")}
                   >
                     Generate study questions
                   </Button>
                   <Button
                     variant="outline"
-                    className="justify-start text-xs sm:text-sm h-auto py-2 px-3"
+                    className="justify-start text-xs sm:text-sm h-auto py-2 px-3 transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
                     onClick={() => setInput("Create an outline")}
                   >
                     Create an outline
@@ -223,7 +224,7 @@ export function ChatPanel({ notebookId, onNoteSaved }: ChatPanelProps) {
                     message.role === "user"
                       ? "bg-primary text-primary-foreground"
                       : "bg-card border border-border"
-                  } rounded-lg p-3 sm:p-4`}
+                  } rounded-xl p-3 sm:p-4 transition-all duration-300 ease-out hover:shadow-md animate-in slide-in-from-bottom-2 fade-in-0`}
                 >
                   <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
                   
@@ -233,7 +234,7 @@ export function ChatPanel({ notebookId, onNoteSaved }: ChatPanelProps) {
                         variant="outline"
                         size="sm"
                         onClick={() => handleSaveAsNote(message.content)}
-                        className="h-7 px-3 text-xs bg-white border-border/50 hover:bg-muted/50"
+                        className="h-7 px-3 text-xs bg-white border-border/50 hover:bg-muted/50 transition-all duration-200 hover:scale-105 active:scale-95"
                         title="Save as Note"
                       >
                         <FileText className="h-3 w-3 mr-1" />
@@ -260,7 +261,7 @@ export function ChatPanel({ notebookId, onNoteSaved }: ChatPanelProps) {
                   <Sparkles className="h-3 w-3 sm:h-4 sm:w-4 text-primary-foreground" />
                 </AvatarFallback>
               </Avatar>
-              <div className="bg-card border border-border rounded-lg p-3 sm:p-4">
+              <div className="bg-card border border-border rounded-xl p-3 sm:p-4">
                 <Loader2 className="h-4 w-4 animate-spin" />
               </div>
             </div>
@@ -269,8 +270,10 @@ export function ChatPanel({ notebookId, onNoteSaved }: ChatPanelProps) {
         </div>
       </ScrollArea>
 
-      {/* Input */}
-      <div className="p-3 sm:p-4 border-t border-border bg-card/80 backdrop-blur-sm">
+      </div>
+
+      {/* Input - Fixed at bottom of page */}
+      <div className="fixed bottom-0 left-0 right-0 p-3 sm:p-4 border-t border-border bg-card/95 backdrop-blur-sm z-50 transition-all duration-300 ease-in-out rounded-t-xl">
         <div className="flex gap-2 max-w-4xl mx-auto">
           <Input
             placeholder="Ask about your notebook..."
@@ -278,13 +281,13 @@ export function ChatPanel({ notebookId, onNoteSaved }: ChatPanelProps) {
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
             disabled={loading}
-            className="flex-1 text-sm sm:text-base bg-background/50 backdrop-blur-sm"
+            className="flex-1 text-sm sm:text-base bg-background/50 backdrop-blur-sm transition-all duration-200 focus:ring-2 focus:ring-primary/20 focus:border-primary/50 rounded-xl"
           />
           <Button 
             onClick={handleSendMessage} 
             disabled={loading || !input.trim()}
             size="icon"
-            className="shrink-0"
+            className="shrink-0 transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl"
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -294,6 +297,6 @@ export function ChatPanel({ notebookId, onNoteSaved }: ChatPanelProps) {
           </Button>
         </div>
       </div>
-    </div>
+    </>
   );
 }
