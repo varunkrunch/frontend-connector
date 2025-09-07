@@ -468,84 +468,87 @@ export default function NotebookDetail() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="px-4 py-3">
+        <div className="container max-w-none px-3 sm:px-4 lg:px-6 py-2 sm:py-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <Button
                 variant="ghost"
-                size="icon"
+                size="sm"
                 onClick={() => navigate("/")}
-                className="rounded-full shrink-0"
+                className="rounded-full shrink-0 h-8 w-8 sm:h-9 sm:w-9 p-0"
               >
-                <ArrowLeft className="h-4 w-4" />
+                <ArrowLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </Button>
               
-              <div className="min-w-0">
-                <h1 className="text-lg sm:text-xl font-bold truncate">{notebook.name}</h1>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-base sm:text-lg lg:text-xl font-bold truncate">{notebook.name}</h1>
               </div>
             </div>
             
             {/* Desktop Actions */}
-            <div className="hidden sm:flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-2">
               <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={handleExport}
+                className="h-8 sm:h-9"
               >
-                <Download className="h-4 w-4 mr-2" />
-                Export
+                <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                <span className="hidden lg:inline">Export</span>
               </Button>
               <Button 
                 variant="destructive" 
                 size="sm" 
                 onClick={handleDelete}
+                className="h-8 sm:h-9"
               >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
+                <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
+                <span className="hidden lg:inline">Delete</span>
               </Button>
             </div>
 
             {/* Mobile Menu */}
-            <div className="sm:hidden">
+            <div className="md:hidden">
               <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full">
-                    <Menu className="h-5 w-5" />
+                  <Button variant="ghost" size="sm" className="rounded-full h-8 w-8 sm:h-9 sm:w-9 p-0">
+                    <Menu className="h-4 w-4 sm:h-5 sm:w-5" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="right" className="w-[280px]">
-                  <div className="flex flex-col gap-4 py-4">
-                    <div className="flex items-center justify-between pb-4 border-b">
-                      <h2 className="text-lg font-semibold">Actions</h2>
+                <SheetContent side="right" className="w-[280px] sm:w-[320px]">
+                  <div className="flex flex-col gap-3 py-4">
+                    <div className="flex items-center justify-between pb-3 border-b">
+                      <h2 className="text-base sm:text-lg font-semibold">Actions</h2>
                       <Button
                         variant="ghost"
-                        size="icon"
+                        size="sm"
+                        className="h-8 w-8 p-0"
                         onClick={() => setIsMobileMenuOpen(false)}
                       >
-                        <X className="h-5 w-5" />
+                        <X className="h-4 w-4" />
                       </Button>
                     </div>
                     <Button 
                       variant="outline" 
-                      className="justify-start gap-3"
+                      className="justify-start gap-2 h-10"
                       onClick={() => {
                         handleExport();
                         setIsMobileMenuOpen(false);
                       }}
                     >
                       <Download className="h-4 w-4" />
-                      Export
+                      Export Notebook
                     </Button>
                     <Button 
                       variant="destructive" 
-                      className="justify-start gap-3"
+                      className="justify-start gap-2 h-10"
                       onClick={() => {
                         handleDelete();
                         setIsMobileMenuOpen(false);
                       }}
                     >
                       <Trash2 className="h-4 w-4" />
-                      Delete
+                      Delete Notebook
                     </Button>
                   </div>
                 </SheetContent>
@@ -556,49 +559,50 @@ export default function NotebookDetail() {
       </header>
 
       {/* Mobile Tabs Navigation */}
-      <div className="sm:hidden border-b">
+      <div className="md:hidden sticky top-[49px] sm:top-[57px] z-40 bg-background border-b">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="sources">Sources</TabsTrigger>
-            <TabsTrigger value="chat">Chat</TabsTrigger>
-            <TabsTrigger value="studio">Studio</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 h-10 sm:h-11 rounded-none bg-background">
+            <TabsTrigger value="sources" className="text-xs sm:text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Sources</TabsTrigger>
+            <TabsTrigger value="chat" className="text-xs sm:text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Chat</TabsTrigger>
+            <TabsTrigger value="studio" className="text-xs sm:text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Studio</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
 
       {/* Desktop Three Panel Layout */}
-      <div className="hidden sm:flex h-[calc(100vh-65px)] gap-6 p-6 bg-gradient-to-br from-background via-background to-muted/20">
+      <div className="hidden md:flex h-[calc(100vh-65px)] gap-3 lg:gap-4 xl:gap-6 p-3 lg:p-4 xl:p-6 bg-gradient-to-br from-background via-background to-muted/20">
         {/* Left Panel - Sources */}
         <div className={cn(
-          "bg-card border border-border/50 transition-all duration-300 flex flex-col rounded-xl shadow-lg hover:shadow-xl backdrop-blur-sm",
-          isSourceExpanded && (isCreatingNote || showPodcastForm) ? "flex-1" : isSourceExpanded ? "w-[600px]" : "w-96"
+          "bg-card border border-border/50 transition-all duration-300 flex flex-col rounded-lg lg:rounded-xl shadow-sm lg:shadow-lg hover:shadow-xl backdrop-blur-sm",
+          isSourceExpanded && (isCreatingNote || showPodcastForm) ? "flex-1" : isSourceExpanded ? "w-[500px] lg:w-[550px] xl:w-[600px]" : "w-[280px] lg:w-[320px] xl:w-96"
         )}>
           {!isSourceExpanded && (
-          <div className="p-4 border-b">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Sources</h2>
-              <div className="flex gap-2">
+          <div className="p-3 lg:p-4 border-b">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm lg:text-base xl:text-lg font-semibold">Sources</h2>
+              <div className="flex gap-1.5">
                   <Button 
                     size="sm" 
                     variant="outline"
                     onClick={handleAddSourceClick}
+                    className="h-7 lg:h-8 px-2 lg:px-3"
                   >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add
+                  <Plus className="h-3 w-3 lg:h-4 lg:w-4 mr-0.5 lg:mr-1" />
+                  <span className="hidden xl:inline">Add</span>
                 </Button>
                   <Button 
                     size="sm" 
                     variant="outline"
                     onClick={handleDiscoverClick}
+                    className="h-7 lg:h-8 px-2 lg:px-3 text-xs lg:text-sm"
                   >
                   Discover
                 </Button>
               </div>
             </div>
-            <input
-              type="text"
+            <Input
               placeholder="Search sources..."
-              className="w-full px-3 py-2 rounded-md border bg-background text-sm"
+              className="h-8 lg:h-9 text-xs lg:text-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
