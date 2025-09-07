@@ -132,7 +132,7 @@ export function Sidebar({
               <Mic className="h-4 w-4" />
               Podcasts
             </Button>
-            <Button variant="ghost" className="w-full justify-start gap-2">
+            <Button variant="ghost" className="w-full justify-start gap-2" onClick={() => navigate("/settings")}>
               <Settings className="h-4 w-4" />
               Settings
             </Button>

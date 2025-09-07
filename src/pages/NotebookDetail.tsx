@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Trash2, Minimize2, AudioLines, Video, Network, FileBarChart, Plus, FileText, ChevronLeft, Menu, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { ArrowLeft, Download, Trash2, Minimize2, AudioLines, Video, Network, FileBarChart, Plus, FileText, ChevronLeft, Menu, X, Upload, Link, Type, Sparkles, Play } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { notebookAPI } from "@/services/api";
 import type { Notebook } from "@/types";
@@ -14,6 +18,7 @@ import { sourcesAPI, notesAPI, podcastsAPI } from "@/services/api";
 import type { Source, Note, Podcast } from "@/types";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function NotebookDetail() {
   const { id } = useParams();
@@ -48,6 +53,16 @@ export default function NotebookDetail() {
     maxChunks: 5,
     minChunkSize: 3
   });
+  
+  // Add/Discover form states
+  const [showAddSourceForm, setShowAddSourceForm] = useState(false);
+  const [showDiscoverForm, setShowDiscoverForm] = useState(false);
+  const [sourceType, setSourceType] = useState<"link" | "upload" | "text">("upload");
+  const [urlInput, setUrlInput] = useState("");
+  const [textInput, setTextInput] = useState("");
+  const [discoverQuery, setDiscoverQuery] = useState("");
+  const [selectedTransformation, setSelectedTransformation] = useState("");
+  const [transformationResults, setTransformationResults] = useState<Record<string, string>>({});
 
   useEffect(() => {
     console.log("NotebookDetail useEffect - notebook:", notebook, "id:", id);
@@ -101,12 +116,106 @@ export default function NotebookDetail() {
 
   const handleSourceSelect = (source: Source) => {
     setSelectedSource(source);
+    setShowAddSourceForm(false); // Hide add form
+    setShowDiscoverForm(false); // Hide discover form
     setIsSourceExpanded(true);
+  };
+  
+  const handleAddSourceClick = () => {
+    setSelectedSource(null); // Clear any selected source
+    setShowDiscoverForm(false); // Hide discover form
+    setShowAddSourceForm(true);
+    setIsSourceExpanded(true); // Trigger panel expansion
+  };
+  
+  const handleDiscoverClick = () => {
+    setSelectedSource(null); // Clear any selected source
+    setShowAddSourceForm(false); // Hide add form
+    setShowDiscoverForm(true);
+    setIsSourceExpanded(true); // Trigger panel expansion
   };
 
   const handleCloseSourceView = () => {
     setIsSourceExpanded(false);
     setSelectedSource(null);
+    setShowAddSourceForm(false);
+    setShowDiscoverForm(false);
+    setUrlInput("");
+    setTextInput("");
+    setDiscoverQuery("");
+    setSelectedTransformation("");
+    setTransformationResults({});
+  };
+
+  const handleTransformationRun = async () => {
+    if (!selectedTransformation || !selectedSource) return;
+    
+    try {
+      toast({
+        title: "Processing transformation",
+        description: `Applying ${selectedTransformation} to source...`,
+      });
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Mock result based on transformation type
+      const mockResults = {
+        "Analyze Paper": "This paper provides a comprehensive overview of neural networks, covering fundamental concepts including perceptrons, backpropagation, and deep learning architectures. The content is well-structured and suitable for intermediate learners.",
+        "Dense Summary": "Neural networks are computing systems inspired by biological neural networks. They consist of interconnected nodes (neurons) that process information through weighted connections. Key concepts include activation functions, backpropagation for learning, and various architectures like feedforward and recurrent networks.",
+        "Key Insights": "• Neural networks mimic biological brain structure\n• Activation functions determine neuron output\n• Backpropagation enables learning from data\n• Different architectures serve different purposes\n• Deep learning extends traditional neural networks",
+        "Reflections": "This source provides a solid foundation for understanding neural networks. The content is accessible yet comprehensive, making it valuable for both beginners and those seeking to reinforce their knowledge. The practical examples help illustrate theoretical concepts.",
+        "Simple Summary": "Neural networks are computer systems that work like the human brain. They learn from data to make predictions and decisions.",
+        "Table of Contents": "1. Introduction to Neural Networks\n2. Biological Inspiration\n3. Basic Components\n4. Learning Process\n5. Network Architectures\n6. Applications\n7. Future Directions"
+      };
+      
+      const result = mockResults[selectedTransformation as keyof typeof mockResults] || "Transformation completed successfully.";
+      setTransformationResults(prev => ({
+        ...prev,
+        [selectedTransformation]: result
+      }));
+      
+      toast({
+        title: "Transformation complete",
+        description: `${selectedTransformation} has been applied successfully.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Transformation failed",
+        description: "Failed to apply transformation. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSaveAsNote = async (transformation: string, content: string) => {
+    if (!id) return;
+    
+    try {
+      const noteTitle = `${transformation} - ${selectedSource?.title || 'Source'}`;
+      
+      await notesAPI.create({
+        notebook_id: id,
+        title: noteTitle,
+        content: content,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+      
+      toast({
+        title: "Note saved",
+        description: `${transformation} result has been saved as a note.`,
+      });
+      
+      // Reload notes to show the new note in Studio panel
+      loadData();
+    } catch (error) {
+      toast({
+        title: "Failed to save note",
+        description: "Could not save the transformation result as a note.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSaveNote = async () => {
@@ -228,6 +337,91 @@ export default function NotebookDetail() {
       toast({
         title: "Deletion failed",
         description: "Failed to delete notebook.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Add Source handlers
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    try {
+      const fileType = files[0].name.split('.').pop() || 'txt';
+      await sourcesAPI.upload(id!, files[0], fileType);
+      toast({
+        title: "File uploaded",
+        description: "Your file has been added to the notebook.",
+      });
+      loadData();
+      handleCloseSourceView();
+    } catch (error) {
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload file. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUrlSubmit = async () => {
+    if (!urlInput.trim()) return;
+
+    try {
+      const isYoutube = urlInput.includes('youtube.com') || urlInput.includes('youtu.be');
+      await sourcesAPI.upload(id!, new File([urlInput], 'url.txt'), isYoutube ? 'youtube' : 'website');
+      toast({
+        title: "URL added",
+        description: "The URL has been added to your notebook.",
+      });
+      setUrlInput("");
+      loadData();
+      handleCloseSourceView();
+    } catch (error) {
+      toast({
+        title: "Failed to add URL",
+        description: "Please check the URL and try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleTextSubmit = async () => {
+    if (!textInput.trim()) return;
+
+    try {
+      await sourcesAPI.upload(id!, new File([textInput], 'text.txt'), 'txt');
+      toast({
+        title: "Text added",
+        description: "Your text has been added to the notebook.",
+      });
+      setTextInput("");
+      loadData();
+      handleCloseSourceView();
+    } catch (error) {
+      toast({
+        title: "Failed to add text",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDiscoverSubmit = async () => {
+    if (!discoverQuery.trim()) return;
+
+    try {
+      toast({
+        title: "Discovering sources",
+        description: `Finding sources related to: ${discoverQuery}`,
+      });
+      setDiscoverQuery("");
+      handleCloseSourceView();
+    } catch (error) {
+      toast({
+        title: "Discovery failed",
+        description: "Please try again.",
         variant: "destructive",
       });
     }
@@ -377,17 +571,26 @@ export default function NotebookDetail() {
         {/* Left Panel - Sources */}
         <div className={cn(
           "bg-card border border-border/50 transition-all duration-300 flex flex-col rounded-xl shadow-lg hover:shadow-xl backdrop-blur-sm",
-          isSourceExpanded ? "w-[600px]" : "w-80"
+          isSourceExpanded && (isCreatingNote || showPodcastForm) ? "flex-1" : isSourceExpanded ? "w-[600px]" : "w-96"
         )}>
+          {!isSourceExpanded && (
           <div className="p-4 border-b">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Sources</h2>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline">
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={handleAddSourceClick}
+                  >
                   <Plus className="h-4 w-4 mr-1" />
                   Add
                 </Button>
-                <Button size="sm" variant="outline">
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={handleDiscoverClick}
+                  >
                   Discover
                 </Button>
               </div>
@@ -400,29 +603,55 @@ export default function NotebookDetail() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
+          )}
+
 
           {!isSourceExpanded ? (
-            <ScrollArea className="flex-1">
+            <div className="flex-1 overflow-hidden">
+              <ScrollArea className="h-full">
               <div className="p-4 space-y-2">
-                {sources.map((source) => (
+                  {sources.length > 0 ? (
+                    sources.map((source) => (
                   <Card
                     key={source.id}
                     className="p-3 cursor-pointer hover:bg-accent/50 transition-colors"
                     onClick={() => handleSourceSelect(source)}
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl">{getSourceIcon(source.source_type)}</span>
+                        <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{source.title}</p>
-                        <p className="text-xs text-muted-foreground">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-lg">{getSourceIcon(source.source_type)}</span>
+                              <p className="font-medium text-sm truncate">{source.title}</p>
+                            </div>
+                            <p className="text-xs text-muted-foreground line-clamp-2">
+                              {source.content || "No content available"}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">
                           {new Date(source.created_at).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
                   </Card>
-                ))}
+                    ))
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="text-muted-foreground mb-4">
+                        <FileText className="h-12 w-12 mx-auto mb-2" />
+                        <p className="text-sm">No sources added yet</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleAddSourceClick}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add First Source
+                      </Button>
+                    </div>
+                  )}
               </div>
             </ScrollArea>
+            </div>
           ) : (
             <div className="flex-1 flex flex-col">
               <div className="p-4 border-b flex items-center justify-between">
@@ -434,7 +663,11 @@ export default function NotebookDetail() {
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-                  <h3 className="font-semibold">{selectedSource?.title}</h3>
+                  <h3 className="font-semibold">
+                    {showAddSourceForm ? "Add a Source" : 
+                     showDiscoverForm ? "Discover sources" : 
+                     selectedSource?.title || "Source Details"}
+                  </h3>
                 </div>
                 <Button
                   size="icon"
@@ -446,9 +679,238 @@ export default function NotebookDetail() {
               </div>
               <ScrollArea className="flex-1">
                 <div className="p-6">
-                  <p className="text-sm text-muted-foreground">
+                  {/* Show Add Source Form */}
+                  {showAddSourceForm && (
+                    <div className="space-y-6">
+                      {/* Source Type Tabs */}
+                      <div className="flex space-x-1 bg-muted p-1 rounded-lg">
+                        <button
+                          onClick={() => setSourceType("upload")}
+                          className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                            sourceType === "upload"
+                              ? "bg-background text-foreground shadow-sm"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          Upload File
+                        </button>
+                        <button
+                          onClick={() => setSourceType("link")}
+                          className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                            sourceType === "link"
+                              ? "bg-background text-foreground shadow-sm"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          Add URL
+                        </button>
+                        <button
+                          onClick={() => setSourceType("text")}
+                          className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                            sourceType === "text"
+                              ? "bg-background text-foreground shadow-sm"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          Text
+                        </button>
+                      </div>
+
+                      {sourceType === "upload" && (
+                        <div className="space-y-4">
+                          <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
+                            <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                            <p className="text-lg font-medium mb-2">Drop files here or click to browse</p>
+                            <div className="flex items-center justify-center gap-3">
+                              <div className="w-10 h-10 bg-muted rounded-full flex items-center justify-center">
+                                <FileText className="h-5 w-5 text-muted-foreground" />
+                              </div>
+                              <Input
+                                type="file"
+                                onChange={handleFileUpload}
+                                accept=".pdf,.txt,.doc,.docx"
+                                className="hidden"
+                                id="file-upload"
+                              />
+                              <Button 
+                                variant="outline" 
+                                size="lg"
+                                onClick={() => document.getElementById('file-upload')?.click()}
+                                className="px-6"
+                              >
+                                Choose Files
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {sourceType === "link" && (
+                        <div className="space-y-4">
+                          <div className="space-y-3">
+                            <Label htmlFor="url-input" className="text-sm font-medium">URL</Label>
+                            <Input
+                              id="url-input"
+                              placeholder="Enter URL (website or YouTube)..."
+                              value={urlInput}
+                              onChange={(e) => setUrlInput(e.target.value)}
+                              onKeyPress={(e) => e.key === 'Enter' && handleUrlSubmit()}
+                              className="h-12"
+                            />
+                            <Button 
+                              onClick={handleUrlSubmit}
+                              className="w-full h-12"
+                              disabled={!urlInput.trim()}
+                            >
+                              <Link className="h-4 w-4 mr-2" />
+                              Add URL
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {sourceType === "text" && (
+                        <div className="space-y-4">
+                          <div className="space-y-3">
+                            <Label htmlFor="text-input" className="text-sm font-medium">Text Content</Label>
+                            <Textarea
+                              id="text-input"
+                              placeholder="Enter or paste your text here..."
+                              value={textInput}
+                              onChange={(e) => setTextInput(e.target.value)}
+                              className="min-h-[200px] resize-none"
+                            />
+                            <Button 
+                              onClick={handleTextSubmit}
+                              className="w-full h-12"
+                              disabled={!textInput.trim()}
+                            >
+                              <Type className="h-4 w-4 mr-2" />
+                              Add Text
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Show Discover Form */}
+                  {showDiscoverForm && (
+                    <div className="space-y-6">
+                      <div className="text-center py-4">
+                        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <Sparkles className="h-8 w-8 text-primary" />
+                        </div>
+                        <h4 className="text-lg font-semibold mb-2">What are you interested in?</h4>
+                      </div>
+
+                      <div className="space-y-4">
+                        <Textarea
+                          placeholder="Describe something that you'd like to learn about or click 'I'm feeling curious' to explore a new topic."
+                          value={discoverQuery}
+                          onChange={(e) => setDiscoverQuery(e.target.value)}
+                          className="min-h-[120px] resize-none"
+                        />
+                        
+                        {!discoverQuery && (
+                          <p className="text-xs text-destructive">Please fill out this field.</p>
+                        )}
+
+                        <div className="flex gap-3">
+                          <Button 
+                            onClick={handleDiscoverSubmit}
+                            className="flex-1"
+                            disabled={!discoverQuery.trim()}
+                          >
+                            Discover Sources
+                          </Button>
+                          <Button 
+                            variant="outline"
+                            onClick={() => setDiscoverQuery("I'm feeling curious")}
+                            className="flex-1"
+                          >
+                            I'm feeling curious
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Show Source Content */}
+                  {selectedSource && !showAddSourceForm && !showDiscoverForm && (
+                    <div className="h-full flex flex-col">
+                      {/* Transformation Controls */}
+                      <div className="flex items-center gap-3 p-2 bg-muted/30 rounded-lg -mt-4 -ml-2 mb-4">
+                        <Select value={selectedTransformation} onValueChange={setSelectedTransformation}>
+                          <SelectTrigger className="w-[200px]">
+                            <SelectValue placeholder="Apply transformation" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Analyze Paper">Analyze Paper</SelectItem>
+                            <SelectItem value="Dense Summary">Dense Summary</SelectItem>
+                            <SelectItem value="Key Insights">Key Insights</SelectItem>
+                            <SelectItem value="Reflections">Reflections</SelectItem>
+                            <SelectItem value="Simple Summary">Simple Summary</SelectItem>
+                            <SelectItem value="Table of Contents">Table of Contents</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button 
+                          onClick={handleTransformationRun}
+                          disabled={!selectedTransformation}
+                          size="sm"
+                        >
+                          <Play className="h-4 w-4 mr-1" />
+                          Run
+                        </Button>
+                      </div>
+
+                      {/* Scrollable Content Area */}
+                      <ScrollArea className="flex-1 pr-2">
+                        <div className="space-y-4">
+                          {/* Show all results in collapsible format */}
+                          {Object.entries(transformationResults).map(([transformation, result]) => (
+                            <div key={transformation} className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                              <details className="group">
+                                <summary className="font-semibold text-sm text-primary cursor-pointer list-none flex items-center justify-between">
+                                  <span>{transformation} Result</span>
+                                  <span className="group-open:rotate-180 transition-transform">▼</span>
+                                </summary>
+                                <div className="mt-2 pt-2 border-t border-primary/20">
+                                  <p className="text-sm whitespace-pre-wrap max-h-32 overflow-y-auto mb-3">
+                                    {result}
+                                  </p>
+                                  <Button 
+                                    onClick={() => handleSaveAsNote(transformation, result)}
+                                    size="sm"
+                                    variant="outline"
+                                    className="w-full"
+                                  >
+                                    <FileText className="h-4 w-4 mr-2" />
+                                    Save as Note
+                                  </Button>
+                                </div>
+                              </details>
+                            </div>
+                          ))}
+
+                          {/* Original Source Content */}
+                          <div className="p-3 bg-muted/20 rounded-lg">
+                            <details className="group">
+                              <summary className="font-semibold text-sm cursor-pointer list-none flex items-center justify-between">
+                                <span>Original Content</span>
+                                <span className="group-open:rotate-180 transition-transform">▼</span>
+                              </summary>
+                              <div className="mt-2 pt-2 border-t border-muted-foreground/20">
+                                <p className="text-sm text-muted-foreground max-h-32 overflow-y-auto">
                     {selectedSource?.content || "No content available"}
                   </p>
+                              </div>
+                            </details>
+                          </div>
+                        </div>
+                      </ScrollArea>
+                    </div>
+                  )}
                 </div>
               </ScrollArea>
             </div>
@@ -456,14 +918,16 @@ export default function NotebookDetail() {
         </div>
 
         {/* Middle Panel - Chat */}
+        {!(isSourceExpanded && (isCreatingNote || showPodcastForm)) && (
         <div className="flex-1 bg-card border border-border/50 rounded-xl shadow-lg hover:shadow-xl backdrop-blur-sm">
-          <ChatPanel notebookId={notebook.id} />
+            <ChatPanel notebookId={notebook.id} onNoteSaved={loadData} />
         </div>
+        )}
 
         {/* Right Panel - Studio */}
         <div className={cn(
           "bg-card border border-border/50 transition-all duration-300 flex flex-col rounded-xl shadow-lg hover:shadow-xl backdrop-blur-sm",
-          (isCreatingNote || showPodcastForm) ? "w-[600px]" : "w-96"
+          isSourceExpanded && (isCreatingNote || showPodcastForm) ? "flex-1" : (isCreatingNote || showPodcastForm) ? "w-[600px]" : "w-96"
         )}>
           {!isCreatingNote && !showPodcastForm ? (
             <>
@@ -792,16 +1256,25 @@ export default function NotebookDetail() {
       {/* Mobile Content */}
       <div className="sm:hidden">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsContent value="sources" className="mt-0">
-          <div className="p-4 space-y-4">
+           <TabsContent value="sources" className="mt-0 h-[calc(100vh-200px)] overflow-hidden">
+             <div className="flex flex-col h-full">
+               <div className="p-4 space-y-4 border-b bg-background/50">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">Sources</h2>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline">
+                     <Button 
+                       size="sm" 
+                       variant="outline"
+                       onClick={handleAddSourceClick}
+                     >
                   <Plus className="h-4 w-4 mr-1" />
                   Add
                 </Button>
-                <Button size="sm" variant="outline">
+                     <Button 
+                       size="sm" 
+                       variant="outline"
+                       onClick={handleDiscoverClick}
+                     >
                   Discover
                 </Button>
               </div>
@@ -809,10 +1282,14 @@ export default function NotebookDetail() {
             <input
               type="text"
               placeholder="Search sources..."
-              className="w-full px-3 py-2 rounded-lg border bg-background/50 text-sm backdrop-blur-sm"
+                   className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
+               </div>
+               
+               <ScrollArea className="flex-1">
+                 <div className="p-4">
             <div className="space-y-2">
               {sources.length > 0 ? (
                 sources.map((source) => (
@@ -821,11 +1298,16 @@ export default function NotebookDetail() {
                     className="p-3 cursor-pointer hover:bg-accent/50 transition-colors"
                     onClick={() => handleSourceSelect(source)}
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl">{getSourceIcon(source.source_type)}</span>
+                           <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{source.title}</p>
-                        <p className="text-xs text-muted-foreground">
+                               <div className="flex items-center gap-2 mb-1">
+                                 <span className="text-lg">{getSourceIcon(source.source_type)}</span>
+                                 <p className="font-medium text-sm truncate">{source.title}</p>
+                               </div>
+                               <p className="text-xs text-muted-foreground line-clamp-2">
+                                 {source.content || "No content available"}
+                               </p>
+                               <p className="text-xs text-muted-foreground mt-1">
                           {new Date(source.created_at).toLocaleDateString()}
                         </p>
                       </div>
@@ -834,13 +1316,13 @@ export default function NotebookDetail() {
                 ))
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
-                  <p className="text-sm">No sources yet</p>
-                  <p className="text-xs">Add your first source to get started</p>
+                         <FileText className="h-12 w-12 mx-auto mb-4" />
+                         <p className="text-sm mb-2">No sources yet</p>
+                         <p className="text-xs mb-4">Add your first source to get started</p>
                   <Button 
                     size="sm" 
                     variant="outline" 
-                    className="mt-2"
-                    onClick={() => console.log("Add source clicked")}
+                           onClick={handleAddSourceClick}
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add First Source
@@ -848,17 +1330,20 @@ export default function NotebookDetail() {
                 </div>
               )}
             </div>
+                 </div>
+               </ScrollArea>
           </div>
         </TabsContent>
 
         <TabsContent value="chat" className="mt-0">
           <div className="h-[calc(100vh-200px)]">
-            <ChatPanel notebookId={notebook.id} />
+            <ChatPanel notebookId={notebook.id} onNoteSaved={loadData} />
           </div>
         </TabsContent>
 
-        <TabsContent value="studio" className="mt-0">
-          <div className="p-4 space-y-4">
+        <TabsContent value="studio" className="mt-0 h-[calc(100vh-200px)] overflow-hidden">
+          <div className="flex flex-col h-full">
+            <div className="p-4 space-y-4 border-b bg-background/50">
             <h2 className="text-lg font-semibold">Studio</h2>
             
             {/* Action Buttons */}
@@ -894,7 +1379,11 @@ export default function NotebookDetail() {
               Add note
             </Button>
 
-            {/* Notes and Podcasts */}
+            </div>
+            
+            {/* Scrollable Notes and Podcasts Section */}
+            <ScrollArea className="flex-1">
+              <div className="p-4">
             <div className="space-y-4">
               {notes.length > 0 ? (
                 <div>
@@ -964,6 +1453,8 @@ export default function NotebookDetail() {
                 </div>
               )}
             </div>
+              </div>
+            </ScrollArea>
           </div>
         </TabsContent>
         </Tabs>

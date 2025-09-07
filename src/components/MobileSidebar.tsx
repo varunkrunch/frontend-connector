@@ -87,7 +87,7 @@ export function MobileSidebar({ isOpen, onOpenChange, notebookId }: MobileSideba
     {
       icon: Settings,
       label: "Settings",
-      action: () => {},
+      action: () => handleNavigation("/settings"),
       description: "Configure preferences"
     },
     {

@@ -12,17 +12,19 @@ import {
   Copy,
   ThumbsUp,
   ThumbsDown,
-  RefreshCw
+  RefreshCw,
+  FileText
 } from "lucide-react";
-import { chatAPI } from "@/services/api";
+import { chatAPI, notesAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import type { ChatMessage } from "@/types";
 
 interface ChatPanelProps {
   notebookId: string;
+  onNoteSaved?: () => void;
 }
 
-export function ChatPanel({ notebookId }: ChatPanelProps) {
+export function ChatPanel({ notebookId, onNoteSaved }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -100,6 +102,34 @@ export function ChatPanel({ notebookId }: ChatPanelProps) {
       title: "Copied",
       description: "Message copied to clipboard",
     });
+  };
+
+  const handleSaveAsNote = async (content: string) => {
+    try {
+      const noteTitle = `AI Response - ${new Date().toLocaleDateString()}`;
+      
+      await notesAPI.create({
+        notebook_id: notebookId,
+        title: noteTitle,
+        content: content,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+      
+      toast({
+        title: "Note saved",
+        description: "AI response has been saved as a note.",
+      });
+      
+      // Notify parent component to refresh notes
+      onNoteSaved?.();
+    } catch (error) {
+      toast({
+        title: "Failed to save note",
+        description: "Could not save the AI response as a note.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -198,20 +228,16 @@ export function ChatPanel({ notebookId }: ChatPanelProps) {
                   <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
                   
                   {message.role === "assistant" && (
-                    <div className="flex items-center gap-1 sm:gap-2 mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-border/20">
+                    <div className="flex justify-end mt-2">
                       <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 sm:h-7 sm:w-7"
-                        onClick={() => handleCopyMessage(message.content)}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSaveAsNote(message.content)}
+                        className="h-7 px-3 text-xs bg-white border-border/50 hover:bg-muted/50"
+                        title="Save as Note"
                       >
-                        <Copy className="h-3 w-3 sm:h-4 sm:w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 sm:h-7 sm:w-7">
-                        <ThumbsUp className="h-3 w-3 sm:h-4 sm:w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 sm:h-7 sm:w-7">
-                        <ThumbsDown className="h-3 w-3 sm:h-4 sm:w-4" />
+                        <FileText className="h-3 w-3 mr-1" />
+                        Save as Note
                       </Button>
                     </div>
                   )}

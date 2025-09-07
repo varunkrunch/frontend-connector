@@ -92,7 +92,7 @@ const Index = () => {
             
             {/* Desktop Navigation */}
             <div className="hidden sm:flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="rounded-full">
+              <Button variant="ghost" size="icon" className="rounded-full" onClick={() => navigate("/settings")}>
                 <Settings className="h-5 w-5" />
               </Button>
               <div className="h-8 w-px bg-border" />

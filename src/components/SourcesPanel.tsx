@@ -48,6 +48,15 @@ export function SourcesPanel({ notebookId }: SourcesPanelProps) {
   const [selectedSource, setSelectedSource] = useState<Source | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showDiscoverForm, setShowDiscoverForm] = useState(false);
+  
+  // Debug state changes
+  useEffect(() => {
+    console.log("showAddForm changed:", showAddForm);
+  }, [showAddForm]);
+  
+  useEffect(() => {
+    console.log("showDiscoverForm changed:", showDiscoverForm);
+  }, [showDiscoverForm]);
   const [sourceType, setSourceType] = useState<"link" | "upload" | "text">("link");
   const [urlInput, setUrlInput] = useState("");
   const [textInput, setTextInput] = useState("");
@@ -337,7 +346,11 @@ export function SourcesPanel({ notebookId }: SourcesPanelProps) {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setShowAddForm(false)}
+              onClick={() => {
+                setShowAddForm(false);
+                setUrlInput("");
+                setTextInput("");
+              }}
             >
               <X className="h-4 w-4" />
             </Button>
@@ -457,7 +470,10 @@ export function SourcesPanel({ notebookId }: SourcesPanelProps) {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setShowDiscoverForm(false)}
+              onClick={() => {
+                setShowDiscoverForm(false);
+                setDiscoverQuery("");
+              }}
             >
               <X className="h-4 w-4" />
             </Button>
