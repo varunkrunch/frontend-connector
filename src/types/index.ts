@@ -20,13 +20,31 @@ export interface Note {
 
 export interface Source {
   id: string;
-  notebook_id: string;
-  source_type: 'pdf' | 'txt' | 'doc' | 'youtube' | 'website';
+  notebook_id?: string;
+  type: 'link' | 'upload' | 'text' | 'pdf' | 'txt' | 'doc' | 'youtube' | 'website';
   title: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  created?: string;
+  updated?: string;
+  created_at?: string; // For backward compatibility
+  updated_at?: string; // For backward compatibility
   content?: string;
+  full_text?: string;
   url?: string;
   file_path?: string;
-  created_at: string;
+  metadata?: Record<string, any>;
+  insights?: SourceInsight[];
+  embedded_chunks?: number;
+}
+
+export interface SourceInsight {
+  id: string;
+  source: string;
+  title: string;
+  content: string;
+  type: string;
+  created?: string;
+  updated?: string;
   metadata?: Record<string, any>;
 }
 

@@ -1,431 +1,381 @@
-// Mock API Service for Standalone Frontend
+// Real API Service for Frontend-Backend Integration
 import type { Notebook, Note, Source, Podcast } from '@/types';
 
-// Mock data generators
-const generateId = () => Math.random().toString(36).substring(7);
+// API Configuration
+const API_BASE_URL = 'http://localhost:8001';
+const API_VERSION = '/api/v1';
 
-// Simulate async behavior
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-// Local storage keys
-const STORAGE_KEYS = {
-  notebooks: 'mock_notebooks',
-  notes: 'mock_notes',
-  sources: 'mock_sources',
-  podcasts: 'mock_podcasts',
-  chats: 'mock_chats',
-};
-
-// Initialize mock data
-const initializeMockData = () => {
-  console.log("Initializing mock data...");
+// Helper function for API requests
+const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
+  const url = `${API_BASE_URL}${API_VERSION}${endpoint}`;
   
-  if (!localStorage.getItem(STORAGE_KEYS.notebooks)) {
-    console.log("Creating initial notebooks...");
-    const initialNotebooks = [
-      {
-        id: '1',
-        name: 'Machine Learning Research',
-        description: 'Research notes and sources for machine learning projects',
-        created_at: new Date('2024-01-15').toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      {
-        id: '2',
-        name: 'Product Strategy 2024',
-        description: 'Product strategy and market research',
-        created_at: new Date('2024-02-01').toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-    ];
-    localStorage.setItem(STORAGE_KEYS.notebooks, JSON.stringify(initialNotebooks));
-    console.log("Initial notebooks created:", initialNotebooks);
-  } else {
-    console.log("Notebooks already exist in localStorage");
+  const defaultOptions: RequestInit = {
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+    ...options,
+  };
+
+  // Remove Content-Type for FormData
+  if (options.body instanceof FormData) {
+    delete defaultOptions.headers?.['Content-Type'];
   }
 
-  if (!localStorage.getItem(STORAGE_KEYS.sources)) {
-    console.log("Creating initial sources...");
-    const initialSources = [
-      {
-        id: '1',
-        notebook_id: '1',
-        title: 'Introduction to Neural Networks.pdf',
-        source_type: 'pdf',
-        content: 'Neural networks are computing systems inspired by biological neural networks...',
-        url: null,
-        created_at: new Date('2024-01-16').toISOString(),
-      },
-      {
-        id: '2',
-        notebook_id: '1',
-        title: 'Deep Learning Tutorial',
-        source_type: 'youtube',
-        content: 'This video covers the fundamentals of deep learning...',
-        url: 'https://youtube.com/watch?v=example',
-        created_at: new Date('2024-01-17').toISOString(),
-      },
-    ];
-    localStorage.setItem(STORAGE_KEYS.sources, JSON.stringify(initialSources));
-    console.log("Initial sources created:", initialSources);
-  }
-
-  if (!localStorage.getItem(STORAGE_KEYS.notes)) {
-    console.log("Creating initial notes...");
-    const initialNotes = [
-      {
-        id: '1',
-        notebook_id: '1',
-        title: 'Key Concepts',
-        content: '## Key Concepts\n\n- Activation functions\n- Backpropagation\n- Gradient descent',
-        created_at: new Date('2024-01-18').toISOString(),
-        updated_at: new Date('2024-01-18').toISOString(),
-      },
-    ];
-    localStorage.setItem(STORAGE_KEYS.notes, JSON.stringify(initialNotes));
-    console.log("Initial notes created:", initialNotes);
-  }
-
-  if (!localStorage.getItem(STORAGE_KEYS.podcasts)) {
-    localStorage.setItem(STORAGE_KEYS.podcasts, JSON.stringify([]));
-  }
-
-  if (!localStorage.getItem(STORAGE_KEYS.chats)) {
-    localStorage.setItem(STORAGE_KEYS.chats, JSON.stringify([]));
+  console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`);
+  
+  try {
+    const response = await fetch(url, defaultOptions);
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+      throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error(`❌ API Error: ${endpoint}`, error);
+    throw error;
   }
 };
 
-// Initialize on load
-initializeMockData();
-
-// Helper functions to manage local storage
-const getFromStorage = (key: string) => {
-  const data = localStorage.getItem(key);
-  return data ? JSON.parse(data) : [];
+// Health check
+export const healthCheck = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/health`);
+    return response.ok;
+  } catch {
+    return false;
+  }
 };
 
-const saveToStorage = (key: string, data: any) => {
-  localStorage.setItem(key, JSON.stringify(data));
-};
-
-// Notebook API
+// Notebooks API
 export const notebookAPI = {
   list: async () => {
-    await delay(300);
     console.log("notebookAPI.list called");
-    const notebooks = getFromStorage(STORAGE_KEYS.notebooks);
-    console.log("Retrieved notebooks from storage:", notebooks);
-    return notebooks;
-  },
-  
-  create: async (data: any) => {
-    await delay(300);
-    const notebooks = getFromStorage(STORAGE_KEYS.notebooks);
-    const newNotebook = {
-      id: generateId(),
-      ...data,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    notebooks.push(newNotebook);
-    saveToStorage(STORAGE_KEYS.notebooks, notebooks);
-    return newNotebook;
+    return await apiRequest('/notebooks');
   },
   
   get: async (id: string) => {
-    await delay(300);
-    const notebooks = getFromStorage(STORAGE_KEYS.notebooks);
-    return notebooks.find((n: any) => n.id === id);
+    console.log("notebookAPI.get called with id:", id);
+    return await apiRequest(`/notebooks/${id}`);
   },
   
-  update: async (id: string, data: any) => {
-    await delay(300);
-    const notebooks = getFromStorage(STORAGE_KEYS.notebooks);
-    const index = notebooks.findIndex((n: any) => n.id === id);
-    if (index !== -1) {
-      notebooks[index] = {
-        ...notebooks[index],
-        ...data,
-        updated_at: new Date().toISOString(),
-      };
-      saveToStorage(STORAGE_KEYS.notebooks, notebooks);
-      return notebooks[index];
-    }
-    throw new Error('Notebook not found');
+  getByName: async (name: string) => {
+    console.log("notebookAPI.getByName called with name:", name);
+    return await apiRequest(`/notebooks/by-name/${encodeURIComponent(name)}`);
+  },
+  
+  create: async (data: { name: string; description: string }) => {
+    console.log("notebookAPI.create called with:", data);
+    return await apiRequest('/notebooks', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+  
+  update: async (id: string, data: Partial<Notebook>) => {
+    console.log("notebookAPI.update called with id:", id, "data:", data);
+    return await apiRequest(`/notebooks/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
   },
   
   delete: async (id: string) => {
-    await delay(300);
-    const notebooks = getFromStorage(STORAGE_KEYS.notebooks);
-    const filtered = notebooks.filter((n: any) => n.id !== id);
-    saveToStorage(STORAGE_KEYS.notebooks, filtered);
-    return { success: true };
+    console.log("notebookAPI.delete called with id:", id);
+    return await apiRequest(`/notebooks/${id}`, {
+      method: 'DELETE',
+    });
+  },
+  
+  archive: async (id: string) => {
+    console.log("notebookAPI.archive called with id:", id);
+    return await apiRequest(`/notebooks/${id}/archive`, {
+      method: 'POST',
+    });
+  },
+  
+  unarchive: async (id: string) => {
+    console.log("notebookAPI.unarchive called with id:", id);
+    return await apiRequest(`/notebooks/${id}/unarchive`, {
+      method: 'POST',
+    });
+  },
+  
+  archiveByName: async (name: string) => {
+    console.log("notebookAPI.archiveByName called with name:", name);
+    return await apiRequest(`/notebooks/by-name/${encodeURIComponent(name)}/archive`, {
+      method: 'POST',
+    });
+  },
+  
+  unarchiveByName: async (name: string) => {
+    console.log("notebookAPI.unarchiveByName called with name:", name);
+    return await apiRequest(`/notebooks/by-name/${encodeURIComponent(name)}/unarchive`, {
+      method: 'POST',
+    });
   },
 };
 
 // Notes API
 export const notesAPI = {
   list: async (notebookId?: string) => {
-    await delay(300);
-    const notes = getFromStorage(STORAGE_KEYS.notes);
+    console.log("notesAPI.list called with notebookId:", notebookId);
     if (notebookId) {
-      return notes.filter((n: any) => n.notebook_id === notebookId);
+      return await apiRequest(`/notebooks/${notebookId}/notes`);
     }
-    return notes;
+    return await apiRequest('/notes');
   },
   
-  create: async (data: any) => {
-    await delay(300);
-    const notes = getFromStorage(STORAGE_KEYS.notes);
-    const newNote = {
-      id: generateId(),
-      ...data,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    };
-    notes.push(newNote);
-    saveToStorage(STORAGE_KEYS.notes, notes);
-    return newNote;
+  create: async (data: { title: string; content: string; notebook_id: string }) => {
+    console.log("notesAPI.create called with:", data);
+    return await apiRequest('/notes', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   },
   
   get: async (id: string) => {
-    await delay(300);
-    const notes = getFromStorage(STORAGE_KEYS.notes);
-    return notes.find((n: any) => n.id === id);
+    console.log("notesAPI.get called with id:", id);
+    return await apiRequest(`/notes/${id}`);
   },
   
   update: async (id: string, data: any) => {
-    await delay(300);
-    const notes = getFromStorage(STORAGE_KEYS.notes);
-    const index = notes.findIndex((n: any) => n.id === id);
-    if (index !== -1) {
-      notes[index] = {
-        ...notes[index],
-        ...data,
-        updated_at: new Date().toISOString(),
-      };
-      saveToStorage(STORAGE_KEYS.notes, notes);
-      return notes[index];
-    }
-    throw new Error('Note not found');
+    console.log("notesAPI.update called with id:", id, "data:", data);
+    return await apiRequest(`/notes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
   },
   
   delete: async (id: string) => {
-    await delay(300);
-    const notes = getFromStorage(STORAGE_KEYS.notes);
-    const filtered = notes.filter((n: any) => n.id !== id);
-    saveToStorage(STORAGE_KEYS.notes, filtered);
-    return { success: true };
+    console.log("notesAPI.delete called with id:", id);
+    return await apiRequest(`/notes/${id}`, {
+      method: 'DELETE',
+    });
   },
 };
 
 // Sources API
 export const sourcesAPI = {
   list: async (notebookId?: string) => {
-    await delay(300);
-    const sources = getFromStorage(STORAGE_KEYS.sources);
+    console.log("sourcesAPI.list called with notebookId:", notebookId);
     if (notebookId) {
-      return sources.filter((s: any) => s.notebook_id === notebookId);
+      const response = await apiRequest(`/notebooks/${notebookId}/sources`);
+      // Backend returns SourceListResponse with sources array
+      return response.sources || response;
     }
-    return sources;
+    return await apiRequest('/sources');
   },
   
-  upload: async (notebookId: string, file: File, type: string) => {
-    await delay(500); // Simulate upload time
-    const sources = getFromStorage(STORAGE_KEYS.sources);
-    const newSource = {
-      id: generateId(),
-      notebook_id: notebookId,
-      title: file.name,
-      source_type: type,
-      content: `Content from ${file.name}...`, // Mock content
-      url: null,
-      created_at: new Date().toISOString(),
-    };
-    sources.push(newSource);
-    saveToStorage(STORAGE_KEYS.sources, sources);
-    return newSource;
+  listByNotebookName: async (notebookName: string) => {
+    console.log("🔍 sourcesAPI.listByNotebookName called with name:", notebookName);
+    const url = `/notebooks/by-name/${encodeURIComponent(notebookName)}/sources`;
+    console.log("🌐 sourcesAPI: Making request to:", url);
+    const response = await apiRequest(url);
+    console.log("📊 sourcesAPI: Raw response:", response);
+    console.log("📊 sourcesAPI: Response type:", typeof response, "Array?", Array.isArray(response));
+    console.log("📊 sourcesAPI: Response.sources:", response.sources);
+    // Backend returns SourceListResponse with sources array
+    const result = response.sources || response;
+    console.log("✅ sourcesAPI: Returning:", result);
+    return result;
   },
   
   get: async (id: string) => {
-    await delay(300);
-    const sources = getFromStorage(STORAGE_KEYS.sources);
-    return sources.find((s: any) => s.id === id);
+    console.log("sourcesAPI.get called with id:", id);
+    return await apiRequest(`/sources/${encodeURIComponent(id)}`);
+  },
+  
+  getByTitle: async (title: string) => {
+    console.log("sourcesAPI.getByTitle called with title:", title);
+    return await apiRequest(`/sources/by-title/${encodeURIComponent(title)}`);
+  },
+  
+  create: async (notebookId: string, data: FormData) => {
+    console.log("sourcesAPI.create called with notebookId:", notebookId);
+    const url = `${API_BASE_URL}${API_VERSION}/notebooks/${notebookId}/sources`;
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        body: data, // FormData doesn't need Content-Type header
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error(`Source upload failed:`, error);
+      throw error;
+    }
+  },
+  
+  createByNotebookName: async (notebookName: string, data: FormData) => {
+    console.log("sourcesAPI.createByNotebookName called with name:", notebookName);
+    const url = `${API_BASE_URL}${API_VERSION}/notebooks/by-name/${encodeURIComponent(notebookName)}/sources`;
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        body: data,
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error(`Source upload failed:`, error);
+      throw error;
+    }
+  },
+  
+  update: async (id: string, data: Partial<Source>) => {
+    console.log("sourcesAPI.update called with id:", id, "data:", data);
+    return await apiRequest(`/sources/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+  
+  updateByTitle: async (title: string, data: Partial<Source>) => {
+    console.log("sourcesAPI.updateByTitle called with title:", title, "data:", data);
+    return await apiRequest(`/sources/by-title/${encodeURIComponent(title)}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
   },
   
   delete: async (id: string) => {
-    await delay(300);
-    const sources = getFromStorage(STORAGE_KEYS.sources);
-    const filtered = sources.filter((s: any) => s.id !== id);
-    saveToStorage(STORAGE_KEYS.sources, filtered);
-    return { success: true };
+    console.log("sourcesAPI.delete called with id:", id);
+    return await apiRequest(`/sources/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+  },
+  
+  deleteByTitle: async (title: string) => {
+    console.log("sourcesAPI.deleteByTitle called with title:", title);
+    return await apiRequest(`/sources/by-title/${encodeURIComponent(title)}`, {
+      method: 'DELETE',
+    });
+  },
+  
+  runTransformations: async (id: string, transformationNames: string, llmId?: string) => {
+    console.log("sourcesAPI.runTransformations called with id:", id, "transformations:", transformationNames);
+    const params = new URLSearchParams({ transformation_names: transformationNames });
+    if (llmId) params.append('llm_id', llmId);
+    
+    return await apiRequest(`/sources/${encodeURIComponent(id)}/run-transformations?${params.toString()}`, {
+      method: 'POST',
+    });
+  },
+  
+  runTransformationsByTitle: async (title: string, transformationNames: string, llmId?: string) => {
+    console.log("sourcesAPI.runTransformationsByTitle called with title:", title, "transformations:", transformationNames);
+    const params = new URLSearchParams({ transformation_names: transformationNames });
+    if (llmId) params.append('llm_id', llmId);
+    
+    return await apiRequest(`/sources/by-title/${encodeURIComponent(title)}/run-transformations?${params.toString()}`, {
+      method: 'POST',
+    });
   },
 };
 
 // Podcasts API
 export const podcastsAPI = {
   list: async (notebookId?: string) => {
-    await delay(300);
-    const podcasts = getFromStorage(STORAGE_KEYS.podcasts);
+    console.log("podcastsAPI.list called with notebookId:", notebookId);
     if (notebookId) {
-      return podcasts.filter((p: any) => p.notebook_id === notebookId);
+      return await apiRequest(`/notebooks/${notebookId}/podcasts`);
     }
-    return podcasts;
+    return await apiRequest('/podcasts/episodes');
   },
   
-  generate: async (data: any) => {
-    await delay(2000); // Simulate generation time
-    const podcasts = getFromStorage(STORAGE_KEYS.podcasts);
-    const newPodcast = {
-      id: generateId(),
-      ...data,
-      title: `Generated Podcast ${podcasts.length + 1}`,
-      duration: Math.floor(Math.random() * 600) + 60, // Random duration between 1-10 minutes
-      script: 'This is a mock podcast script generated from your notebook content...',
-      created_at: new Date().toISOString(),
-    };
-    podcasts.push(newPodcast);
-    saveToStorage(STORAGE_KEYS.podcasts, podcasts);
-    return newPodcast;
+  generate: async (data: { notebook_id: string; title?: string; description?: string }) => {
+    console.log("podcastsAPI.generate called with:", data);
+    return await apiRequest('/podcasts/generate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   },
   
   get: async (id: string) => {
-    await delay(300);
-    const podcasts = getFromStorage(STORAGE_KEYS.podcasts);
-    return podcasts.find((p: any) => p.id === id);
+    console.log("podcastsAPI.get called with id:", id);
+    return await apiRequest(`/podcasts/${id}`);
   },
   
   getAudio: (id: string) => {
-    // Return a placeholder audio URL
-    return 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+    return `${API_BASE_URL}${API_VERSION}/podcasts/${id}/audio`;
   },
   
   delete: async (id: string) => {
-    await delay(300);
-    const podcasts = getFromStorage(STORAGE_KEYS.podcasts);
-    const filtered = podcasts.filter((p: any) => p.id !== id);
-    saveToStorage(STORAGE_KEYS.podcasts, filtered);
-    return { success: true };
+    console.log("podcastsAPI.delete called with id:", id);
+    return await apiRequest(`/podcasts/${id}`, {
+      method: 'DELETE',
+    });
   },
 };
 
 // Search API
 export const searchAPI = {
   search: async (query: string, notebookId?: string) => {
-    await delay(500);
-    const results = [];
+    console.log("searchAPI.search called with query:", query, "notebookId:", notebookId);
+    const params = new URLSearchParams({ q: query });
+    if (notebookId) params.append('notebook_id', notebookId);
     
-    // Search in notes
-    const notes = getFromStorage(STORAGE_KEYS.notes);
-    const matchingNotes = notes.filter((n: any) => {
-      if (notebookId && n.notebook_id !== notebookId) return false;
-      return n.content.toLowerCase().includes(query.toLowerCase());
-    });
-    
-    // Search in sources
-    const sources = getFromStorage(STORAGE_KEYS.sources);
-    const matchingSources = sources.filter((s: any) => {
-      if (notebookId && s.notebook_id !== notebookId) return false;
-      return s.title.toLowerCase().includes(query.toLowerCase()) ||
-             s.content.toLowerCase().includes(query.toLowerCase());
-    });
-    
-    return {
-      notes: matchingNotes,
-      sources: matchingSources,
-      total: matchingNotes.length + matchingSources.length,
-    };
+    return await apiRequest(`/search?${params.toString()}`);
   },
 };
 
 // Models API
 export const modelsAPI = {
   list: async () => {
-    await delay(300);
-    return [
-      { id: 'gpt-4', name: 'GPT-4', type: 'chat', provider: 'OpenAI', status: 'available' as const },
-      { id: 'claude-3', name: 'Claude 3', type: 'chat', provider: 'Anthropic', status: 'available' as const },
-      { id: 'llama-2', name: 'Llama 2', type: 'chat', provider: 'Meta', status: 'available' as const },
-    ];
+    console.log("modelsAPI.list called");
+    return await apiRequest('/models');
   },
   
-  status: async () => {
-    await delay(300);
-    return {
-      status: 'healthy',
-      models: 3,
-      message: 'All models operational',
-    };
+  getProviders: async () => {
+    console.log("modelsAPI.getProviders called");
+    return await apiRequest('/models/providers');
   },
 };
 
 // Transformations API
 export const transformationsAPI = {
-  transform: async (data: any) => {
-    await delay(1000);
-    const { text, transformation_type } = data;
-    
-    // Mock transformations
-    const transformations: Record<string, string> = {
-      summarize: `Summary: ${text.substring(0, 100)}...`,
-      translate: `Translated: ${text}`,
-      simplify: `Simplified: ${text.replace(/\b\w{10,}\b/g, 'simple')}`,
-      expand: `${text}\n\nAdditional context: This topic is important because...`,
-    };
-    
-    return {
-      original: text,
-      transformed: transformations[transformation_type] || text,
-      transformation_type,
-    };
+  list: async () => {
+    console.log("transformationsAPI.list called");
+    return await apiRequest('/transformations');
+  },
+  
+  transform: async (data: { text: string; transformation_type: string }) => {
+    console.log("transformationsAPI.transform called with:", data);
+    return await apiRequest('/transformations', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   },
 };
 
 // Chat API
 export const chatAPI = {
-  send: async (data: any) => {
-    await delay(1000);
-    const chats = getFromStorage(STORAGE_KEYS.chats);
-    
-    // Generate a mock response
-    const responses = [
-      "That's an interesting question! Based on your notebook content...",
-      "According to the sources you've uploaded...",
-      "I can help you understand this better. Let me explain...",
-      "Great observation! Here's what I found in your materials...",
-    ];
-    
-    const userMessage = {
-      id: generateId(),
-      notebook_id: data.notebook_id,
-      role: 'user',
-      content: data.message,
-      timestamp: new Date().toISOString(),
-    };
-    
-    const assistantMessage = {
-      id: generateId(),
-      notebook_id: data.notebook_id,
-      role: 'assistant',
-      content: responses[Math.floor(Math.random() * responses.length)],
-      timestamp: new Date().toISOString(),
-    };
-    
-    chats.push(userMessage, assistantMessage);
-    saveToStorage(STORAGE_KEYS.chats, chats);
-    
-    return assistantMessage;
+  sendMessage: async (data: { message: string; notebook_id: string; session_id?: string }) => {
+    console.log("chatAPI.sendMessage called with:", data);
+    return await apiRequest('/chat', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   },
   
-  history: async (notebookId: string) => {
-    await delay(300);
-    const chats = getFromStorage(STORAGE_KEYS.chats);
-    return chats.filter((c: any) => c.notebook_id === notebookId);
+  getHistory: async (notebookId: string, sessionId?: string) => {
+    console.log("chatAPI.getHistory called with notebookId:", notebookId, "sessionId:", sessionId);
+    const params = new URLSearchParams({ notebook_id: notebookId });
+    if (sessionId) params.append('session_id', sessionId);
+    
+    return await apiRequest(`/chat/history?${params.toString()}`);
   },
-};
-
-// Health check (always returns healthy for standalone)
-export const healthCheck = async () => {
-  await delay(100);
-  return { status: 'healthy', message: 'Standalone mode - No backend required' };
 };

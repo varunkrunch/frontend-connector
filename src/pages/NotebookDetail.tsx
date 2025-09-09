@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { ArrowLeft, Download, Trash2, Minimize2, AudioLines, Video, Network, FileBarChart, Plus, FileText, ChevronLeft, Menu, X, Upload, Link, Type, Sparkles, Play } from "lucide-react";
+import { ArrowLeft, Download, Trash2, Minimize2, AudioLines, Video, Network, FileBarChart, Plus, FileText, ChevronLeft, Menu, X, Upload, Link, Type, Sparkles, Play, MoreVertical, Edit, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { notebookAPI } from "@/services/api";
 import type { Notebook } from "@/types";
@@ -19,6 +19,7 @@ import type { Source, Note, Podcast } from "@/types";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export default function NotebookDetail() {
   const { id } = useParams();
@@ -61,8 +62,13 @@ export default function NotebookDetail() {
   const [urlInput, setUrlInput] = useState("");
   const [textInput, setTextInput] = useState("");
   const [discoverQuery, setDiscoverQuery] = useState("");
+  const [isAddingSource, setIsAddingSource] = useState(false);
   const [selectedTransformation, setSelectedTransformation] = useState("");
   const [transformationResults, setTransformationResults] = useState<Record<string, string>>({});
+  const [isEditingSource, setIsEditingSource] = useState(false);
+  const [editingSourceTitle, setEditingSourceTitle] = useState("");
+  const [editingSourceId, setEditingSourceId] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     console.log("NotebookDetail useEffect - notebook:", notebook, "id:", id);
@@ -96,21 +102,37 @@ export default function NotebookDetail() {
   };
 
   const loadData = async () => {
-    if (!id) return;
+    if (!id || !notebook) return;
     
+    console.log("Loading data for notebook:", id, "name:", notebook.name);
+    
+    // Load sources (this works)
     try {
-      console.log("Loading data for notebook:", id);
-      const [sourcesData, notesData, podcastsData] = await Promise.all([
-        sourcesAPI.list(id),
-        notesAPI.list(id),
-        podcastsAPI.list(id),
-      ]);
-      console.log("Loaded data:", { sources: sourcesData, notes: notesData, podcasts: podcastsData });
+      const sourcesData = await sourcesAPI.listByNotebookName(notebook.name);
+      console.log("✅ Sources loaded:", sourcesData);
       setSources(sourcesData);
+    } catch (error) {
+      console.error("❌ Error loading sources:", error);
+    }
+    
+    // Load notes (this might fail, but we'll handle it gracefully)
+    try {
+      const notesData = await notesAPI.list(id);
+      console.log("✅ Notes loaded:", notesData);
       setNotes(notesData);
+    } catch (error) {
+      console.error("❌ Error loading notes:", error);
+      setNotes([]); // Set empty array if notes fail
+    }
+    
+    // Load podcasts (this might fail, but we'll handle it gracefully)
+    try {
+      const podcastsData = await podcastsAPI.list(id);
+      console.log("✅ Podcasts loaded:", podcastsData);
       setPodcasts(podcastsData);
     } catch (error) {
-      console.error("Error loading data:", error);
+      console.error("❌ Error loading podcasts:", error);
+      setPodcasts([]); // Set empty array if podcasts fail
     }
   };
 
@@ -119,6 +141,19 @@ export default function NotebookDetail() {
     setShowAddSourceForm(false); // Hide add form
     setShowDiscoverForm(false); // Hide discover form
     setIsSourceExpanded(true);
+    
+    // Load existing insights/transformations for this source
+    if (source.insights && source.insights.length > 0) {
+      const insightsMap: Record<string, string> = {};
+      source.insights.forEach(insight => {
+        if (insight.content) {
+          insightsMap[insight.transformation_name || 'Transformation'] = insight.content;
+        }
+      });
+      setTransformationResults(insightsMap);
+    } else {
+      setTransformationResults({});
+    }
   };
   
   const handleAddSourceClick = () => {
@@ -156,33 +191,107 @@ export default function NotebookDetail() {
         description: `Applying ${selectedTransformation} to source...`,
       });
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log("🔍 NotebookDetail: Running transformation:", selectedTransformation, "on source:", selectedSource.title);
       
-      // Mock result based on transformation type
-      const mockResults = {
-        "Analyze Paper": "This paper provides a comprehensive overview of neural networks, covering fundamental concepts including perceptrons, backpropagation, and deep learning architectures. The content is well-structured and suitable for intermediate learners.",
-        "Dense Summary": "Neural networks are computing systems inspired by biological neural networks. They consist of interconnected nodes (neurons) that process information through weighted connections. Key concepts include activation functions, backpropagation for learning, and various architectures like feedforward and recurrent networks.",
-        "Key Insights": "• Neural networks mimic biological brain structure\n• Activation functions determine neuron output\n• Backpropagation enables learning from data\n• Different architectures serve different purposes\n• Deep learning extends traditional neural networks",
-        "Reflections": "This source provides a solid foundation for understanding neural networks. The content is accessible yet comprehensive, making it valuable for both beginners and those seeking to reinforce their knowledge. The practical examples help illustrate theoretical concepts.",
-        "Simple Summary": "Neural networks are computer systems that work like the human brain. They learn from data to make predictions and decisions.",
-        "Table of Contents": "1. Introduction to Neural Networks\n2. Biological Inspiration\n3. Basic Components\n4. Learning Process\n5. Network Architectures\n6. Applications\n7. Future Directions"
-      };
+      // Call the real transformation API
+      const result = await sourcesAPI.runTransformationsByTitle(selectedSource.title, selectedTransformation);
       
-      const result = mockResults[selectedTransformation as keyof typeof mockResults] || "Transformation completed successfully.";
+      console.log("✅ NotebookDetail: Transformation result:", result);
+      
+      // Extract the actual AI-generated content from the results
+      let aiContent = `Successfully applied "${selectedTransformation}" transformation. Applied: ${result.total_applied}, Failed: ${result.total_failed}`;
+      
+      if (result.results && result.results.length > 0) {
+        const firstResult = result.results[0];
+        if (firstResult.success && firstResult.output) {
+          aiContent = firstResult.output;
+        }
+      }
+      
       setTransformationResults(prev => ({
         ...prev,
-        [selectedTransformation]: result
+        [selectedTransformation]: aiContent
       }));
       
       toast({
         title: "Transformation complete",
         description: `${selectedTransformation} has been applied successfully.`,
       });
+      
+      // Reload sources to get updated insights
+      await loadData();
+      
     } catch (error) {
+      console.error("❌ NotebookDetail: Transformation error:", error);
+      
+      const errorResult = `Failed to apply "${selectedTransformation}" transformation: ${error.message}`;
+      setTransformationResults(prev => ({
+        ...prev,
+        [selectedTransformation]: errorResult
+      }));
+      
       toast({
         title: "Transformation failed",
         description: "Failed to apply transformation. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRenameSource = async () => {
+    if (!editingSourceTitle.trim() || !editingSourceId) return;
+    
+    // Find the source being edited
+    const sourceToEdit = sources.find(s => s.id === editingSourceId);
+    if (!sourceToEdit) return;
+    
+    try {
+      // Use the source ID for update if title is empty, otherwise use title
+      if (sourceToEdit.title && sourceToEdit.title.trim()) {
+        await sourcesAPI.updateByTitle(sourceToEdit.title, { title: editingSourceTitle.trim() });
+      } else {
+        await sourcesAPI.update(sourceToEdit.id, { title: editingSourceTitle.trim() });
+      }
+      toast({
+        title: "Source renamed",
+        description: `Source renamed to "${editingSourceTitle.trim()}".`,
+      });
+      setEditingSourceTitle("");
+      setEditingSourceId(null);
+      await loadData(); // Reload to get updated data
+    } catch (error) {
+      console.error("❌ NotebookDetail: Error renaming source:", error);
+      toast({
+        title: "Rename failed",
+        description: "Failed to rename source. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteSource = async () => {
+    if (!selectedSource) return;
+    
+    try {
+      // Use the source ID for delete if title is empty, otherwise use title
+      if (selectedSource.title && selectedSource.title.trim()) {
+        await sourcesAPI.deleteByTitle(selectedSource.title);
+      } else {
+        await sourcesAPI.delete(selectedSource.id);
+      }
+      toast({
+        title: "Source deleted",
+        description: `Source "${selectedSource.title || 'Untitled'}" has been deleted.`,
+      });
+      setSelectedSource(null);
+      setTransformationResults({});
+      setShowDeleteConfirm(false);
+      await loadData(); // Reload to get updated data
+    } catch (error) {
+      console.error("❌ NotebookDetail: Error deleting source:", error);
+      toast({
+        title: "Delete failed",
+        description: "Failed to delete source. Please try again.",
         variant: "destructive",
       });
     }
@@ -345,11 +454,15 @@ export default function NotebookDetail() {
   // Add Source handlers
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || files.length === 0) return;
+    if (!files || files.length === 0 || !notebook) return;
 
+    setIsAddingSource(true);
     try {
-      const fileType = files[0].name.split('.').pop() || 'txt';
-      await sourcesAPI.upload(id!, files[0], fileType);
+      const formData = new FormData();
+      formData.append('type', 'upload');
+      formData.append('file', files[0]);
+      
+      await sourcesAPI.createByNotebookName(notebook.name, formData);
       toast({
         title: "File uploaded",
         description: "Your file has been added to the notebook.",
@@ -362,15 +475,22 @@ export default function NotebookDetail() {
         description: "Failed to upload file. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsAddingSource(false);
     }
   };
 
   const handleUrlSubmit = async () => {
-    if (!urlInput.trim()) return;
+    if (!urlInput.trim() || !notebook) return;
 
+    setIsAddingSource(true);
     try {
       const isYoutube = urlInput.includes('youtube.com') || urlInput.includes('youtu.be');
-      await sourcesAPI.upload(id!, new File([urlInput], 'url.txt'), isYoutube ? 'youtube' : 'website');
+      const formData = new FormData();
+      formData.append('type', 'link');
+      formData.append('url', urlInput);
+      
+      await sourcesAPI.createByNotebookName(notebook.name, formData);
       toast({
         title: "URL added",
         description: "The URL has been added to your notebook.",
@@ -384,14 +504,21 @@ export default function NotebookDetail() {
         description: "Please check the URL and try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsAddingSource(false);
     }
   };
 
   const handleTextSubmit = async () => {
-    if (!textInput.trim()) return;
+    if (!textInput.trim() || !notebook) return;
 
+    setIsAddingSource(true);
     try {
-      await sourcesAPI.upload(id!, new File([textInput], 'text.txt'), 'txt');
+      const formData = new FormData();
+      formData.append('type', 'text');
+      formData.append('content', textInput);
+      
+      await sourcesAPI.createByNotebookName(notebook.name, formData);
       toast({
         title: "Text added",
         description: "Your text has been added to the notebook.",
@@ -405,6 +532,8 @@ export default function NotebookDetail() {
         description: "Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsAddingSource(false);
     }
   };
 
@@ -463,6 +592,9 @@ export default function NotebookDetail() {
   }
 
   console.log("NotebookDetail - Rendering with notebook:", notebook, "sources:", sources, "notes:", notes, "podcasts:", podcasts);
+  console.log("🔍 NotebookDetail: Component rendering - sources.length:", sources.length, "isSourceExpanded:", isSourceExpanded);
+  console.log("🔍 NotebookDetail: Will show sources list?", !isSourceExpanded);
+  console.log("🔍 NotebookDetail: Sources array:", sources);
   
   return (
     <div className="min-h-screen bg-background">
@@ -571,6 +703,7 @@ export default function NotebookDetail() {
       {/* Desktop Three Panel Layout */}
       <div className="hidden sm:flex h-[calc(100vh-65px)] gap-3 lg:gap-6 p-3 lg:p-6 bg-gradient-to-br from-background via-background to-muted/20">
         {/* Left Panel - Sources */}
+        {console.log("🔍 NotebookDetail: Rendering left panel - isSourceExpanded:", isSourceExpanded)}
         <div className={cn(
           "bg-card border border-border/50 transition-all duration-300 flex flex-col rounded-xl shadow-lg hover:shadow-xl backdrop-blur-sm",
           isSourceExpanded && (isCreatingNote || showPodcastForm) ? "flex-1" : isSourceExpanded ? "w-[500px] lg:w-[600px]" : "w-80 lg:w-96"
@@ -610,31 +743,91 @@ export default function NotebookDetail() {
           )}
 
 
+          {console.log("🔍 NotebookDetail: isSourceExpanded:", isSourceExpanded, "Will render sources list?")}
           {!isSourceExpanded ? (
             <div className="flex-1 overflow-hidden">
               <ScrollArea className="h-full">
-              <div className="p-4 space-y-2">
+              <div className="p-4 space-y-2 w-full max-w-full overflow-hidden">
+                  {console.log("🔍 NotebookDetail: Rendering sources - sources.length:", sources.length, "sources:", sources)}
                   {sources.length > 0 ? (
                     sources.map((source) => (
                   <Card
                     key={source.id}
-                    className="p-3 cursor-pointer hover:bg-accent/50 transition-colors"
+                    className="group p-2 cursor-pointer hover:bg-accent/50 transition-colors w-full max-w-full h-12 flex items-center overflow-hidden"
                     onClick={() => handleSourceSelect(source)}
                   >
-                        <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-lg">{getSourceIcon(source.source_type)}</span>
-                              <p className="font-medium text-sm truncate">{source.title}</p>
+                        <div className="flex items-center gap-2 w-full max-w-full overflow-hidden">
+                            <span className="text-sm flex-shrink-0">{getSourceIcon(source.type)}</span>
+                            <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden" style={{maxWidth: 'calc(100% - 80px)'}}>
+                              {editingSourceId === source.id ? (
+                                <Input
+                                  value={editingSourceTitle}
+                                  onChange={(e) => setEditingSourceTitle(e.target.value)}
+                                  className="text-sm font-medium h-6 flex-1"
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      handleRenameSource();
+                                    }
+                                    if (e.key === 'Escape') {
+                                      setEditingSourceId(null);
+                                      setEditingSourceTitle("");
+                                    }
+                                  }}
+                                  autoFocus
+                                />
+                              ) : (
+                                <div className="flex-1 min-w-0 overflow-hidden">
+                                  <p className="font-medium text-sm truncate">
+                                    {source.title}
+                                  </p>
+                                </div>
+                              )}
+                              <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreVertical className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedSource(source);
+                              setEditingSourceTitle(source.title);
+                              setEditingSourceId(source.id);
+                              // Focus the input after state update
+                              setTimeout(() => {
+                                const input = document.querySelector('input[autofocus]') as HTMLInputElement;
+                                if (input) {
+                                  input.focus();
+                                  input.select();
+                                }
+                              }, 10);
+                            }}
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Rename source
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedSource(source);
+                              setShowDeleteConfirm(true);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Remove source
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
-                            <p className="text-xs text-muted-foreground line-clamp-2">
-                              {source.content || "No content available"}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(source.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
+                        </div>
                   </Card>
                     ))
                   ) : (
@@ -685,7 +878,16 @@ export default function NotebookDetail() {
                 <div className="p-6">
                   {/* Show Add Source Form */}
                   {showAddSourceForm && (
-                    <div className="space-y-6">
+                    <div className="space-y-6 relative">
+                      {/* Loading Overlay */}
+                      {isAddingSource && (
+                        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center rounded-lg">
+                          <div className="flex flex-col items-center gap-3">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                            <p className="text-sm text-muted-foreground">Adding source...</p>
+                          </div>
+                        </div>
+                      )}
                       {/* Source Type Tabs */}
                       <div className="flex space-x-1 bg-muted p-1 rounded-xl">
                         <button
@@ -741,6 +943,7 @@ export default function NotebookDetail() {
                                 size="lg"
                                 onClick={() => document.getElementById('file-upload')?.click()}
                                 className="px-6"
+                                disabled={isAddingSource}
                               >
                                 Choose Files
                               </Button>
@@ -760,11 +963,12 @@ export default function NotebookDetail() {
                               onChange={(e) => setUrlInput(e.target.value)}
                               onKeyPress={(e) => e.key === 'Enter' && handleUrlSubmit()}
                               className="h-12"
+                              disabled={isAddingSource}
                             />
                             <Button 
                               onClick={handleUrlSubmit}
                               className="w-full h-12"
-                              disabled={!urlInput.trim()}
+                              disabled={!urlInput.trim() || isAddingSource}
                             >
                               <Link className="h-4 w-4 mr-2" />
                               Add URL
@@ -783,11 +987,12 @@ export default function NotebookDetail() {
                               value={textInput}
                               onChange={(e) => setTextInput(e.target.value)}
                               className="min-h-[200px] resize-none"
+                              disabled={isAddingSource}
                             />
                             <Button 
                               onClick={handleTextSubmit}
                               className="w-full h-12"
-                              disabled={!textInput.trim()}
+                              disabled={!textInput.trim() || isAddingSource}
                             >
                               <Type className="h-4 w-4 mr-2" />
                               Add Text
@@ -1299,7 +1504,16 @@ export default function NotebookDetail() {
 
               {/* Add Source Form */}
               {showAddSourceForm && (
-                <div className="p-4 border-b bg-muted/30">
+                <div className="p-4 border-b bg-muted/30 relative">
+                  {/* Loading Overlay */}
+                  {isAddingSource && (
+                    <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center rounded-lg">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        <p className="text-sm text-muted-foreground">Adding source...</p>
+                      </div>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-semibold">Add Source</h3>
                     <Button
@@ -1496,31 +1710,91 @@ export default function NotebookDetail() {
               )}
 
               {/* Sources List - Only show when not expanded */}
+              {console.log("🔍 NotebookDetail Mobile: isSourceExpanded:", isSourceExpanded, "Will render mobile sources list?")}
               {!isSourceExpanded && (
                 <ScrollArea className="flex-1">
-                  <div className="p-4">
-            <div className="space-y-2">
+                  <div className="p-4 w-full max-w-full overflow-hidden">
+            <div className="space-y-2 w-full max-w-full overflow-hidden">
+              {console.log("🔍 NotebookDetail Mobile: Rendering sources - sources.length:", sources.length, "sources:", sources)}
               {sources.length > 0 ? (
                 sources.map((source) => (
                   <Card
                     key={source.id}
-                    className="p-3 cursor-pointer hover:bg-accent/50 transition-colors"
+                    className="group p-2 cursor-pointer hover:bg-accent/50 transition-colors w-full max-w-full h-12 flex items-center overflow-hidden"
                     onClick={() => handleSourceSelect(source)}
                   >
-                            <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-lg">{getSourceIcon(source.source_type)}</span>
-                                  <p className="font-medium text-sm truncate">{source.title}</p>
-                                </div>
-                                <p className="text-xs text-muted-foreground line-clamp-2">
-                                  {source.content || "No content available"}
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(source.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
+                            <div className="flex items-center gap-2 w-full max-w-full overflow-hidden">
+                            <span className="text-sm flex-shrink-0">{getSourceIcon(source.type)}</span>
+                            <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden" style={{maxWidth: 'calc(100% - 80px)'}}>
+                                  {editingSourceId === source.id ? (
+                                    <Input
+                                      value={editingSourceTitle}
+                                      onChange={(e) => setEditingSourceTitle(e.target.value)}
+                                      className="text-sm font-medium h-6 flex-1"
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          handleRenameSource();
+                                        }
+                                        if (e.key === 'Escape') {
+                                          setEditingSourceId(null);
+                                          setEditingSourceTitle("");
+                                        }
+                                      }}
+                                      autoFocus
+                                    />
+                                  ) : (
+                                     <div className="flex-1 min-w-0 overflow-hidden">
+                                        <p className="font-medium text-sm truncate">
+                                          {source.title}
+                                        </p>
+                                      </div>
+                                  )}
+                              <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreVertical className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedSource(source);
+                              setEditingSourceTitle(source.title);
+                              setEditingSourceId(source.id);
+                              // Focus the input after state update
+                              setTimeout(() => {
+                                const input = document.querySelector('input[autofocus]') as HTMLInputElement;
+                                if (input) {
+                                  input.focus();
+                                  input.select();
+                                }
+                              }, 10);
+                            }}
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Rename source
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedSource(source);
+                              setShowDeleteConfirm(true);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Remove source
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                        </div>
                   </Card>
                 ))
               ) : (
@@ -1937,6 +2211,26 @@ export default function NotebookDetail() {
                 value={noteContent}
                 onChange={(e) => setNoteContent(e.target.value)}
               />
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Delete Confirmation Dialog */}
+      {showDeleteConfirm && selectedSource && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-background border border-border rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-2">Delete Source</h3>
+            <p className="text-muted-foreground mb-4">
+              Are you sure you want to delete "{selectedSource.title}"? This action cannot be undone.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleDeleteSource}>
+                Delete
+              </Button>
             </div>
           </div>
         </div>

@@ -118,7 +118,8 @@ export function NotebookView({ notebook }: NotebookViewProps) {
       <div className="flex-1 overflow-auto">
         <Tabs value={activeTab} className="h-full">
           <TabsContent value="sources" className="h-full m-0">
-            <SourcesPanel notebookId={notebook.id} />
+            {console.log("🔍 NotebookView: Passing to SourcesPanel - notebookId:", notebook.id, "notebookName:", notebook.name)}
+            <SourcesPanel notebookId={notebook.id} notebookName={notebook.name} />
           </TabsContent>
           <TabsContent value="notes" className="h-full m-0">
             <NotesPanel notebookId={notebook.id} />
