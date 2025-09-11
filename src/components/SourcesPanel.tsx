@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import {
   Select,
   SelectContent,
@@ -25,18 +26,20 @@ import {
   Link,
   Download,
   ExternalLink,
-  X,
   ChevronLeft,
   Play,
   Sparkles,
   FileIcon,
   Type,
   Edit,
-  Check,
   MoreVertical,
+  RefreshCw,
+  Lightbulb,
+  BookOpen,
+  X,
   Loader2
 } from "lucide-react";
-import { sourcesAPI } from "@/services/api";
+import { sourcesAPI, notesAPI, serperAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import type { Source } from "@/types";
 import { cn } from "@/lib/utils";
@@ -74,12 +77,20 @@ export function SourcesPanel({ notebookId, notebookName }: SourcesPanelProps) {
   const [textInput, setTextInput] = useState("");
   const [discoverQuery, setDiscoverQuery] = useState("");
   const [transformation, setTransformation] = useState<string>("");
-  const [transformationResult, setTransformationResult] = useState<string>("");
-  const [isEditingSource, setIsEditingSource] = useState(false);
-  const [editingSourceTitle, setEditingSourceTitle] = useState("");
+  const [transformationError, setTransformationError] = useState<string>("");
+  const [sourceInsights, setSourceInsights] = useState<any[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [editingSourceId, setEditingSourceId] = useState<string | null>(null);
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [renameTitle, setRenameTitle] = useState("");
+  const [sourceToRename, setSourceToRename] = useState<Source | null>(null);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
   const { toast } = useToast();
+
+  // Debug modal state
+  useEffect(() => {
+    console.log("🔧 Modal state changed:", { showRenameModal, sourceToRename: sourceToRename?.title });
+  }, [showRenameModal, sourceToRename]);
 
   const loadSources = useCallback(async () => {
     try {
@@ -88,8 +99,18 @@ export function SourcesPanel({ notebookId, notebookName }: SourcesPanelProps) {
       const data = await sourcesAPI.listByNotebookName(notebookName);
       console.log("📊 SourcesPanel: Received data:", data);
       console.log("📊 SourcesPanel: Data type:", typeof data, "Array?", Array.isArray(data));
+      
+      // Debug each source to see if insights are included
+      if (Array.isArray(data)) {
+        data.forEach((source, index) => {
+          console.log(`📊 SourcesPanel: Source ${index} (${source.title}):`, source);
+          console.log(`📊 SourcesPanel: Source ${index} insights:`, source.insights);
+        });
+      }
+      
       setSources(data);
       console.log("✅ SourcesPanel: Sources state updated with", data?.length || 0, "sources");
+      return data; // Return the sources for immediate use
     } catch (error) {
       console.error("❌ SourcesPanel: Error loading sources:", error);
       toast({
@@ -97,8 +118,33 @@ export function SourcesPanel({ notebookId, notebookName }: SourcesPanelProps) {
         description: "Failed to load sources. Please try again.",
         variant: "destructive",
       });
+      return null;
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadSourceInsights = useCallback(async (source: Source) => {
+    try {
+      console.log("🔍 SourcesPanel: Loading insights for source:", source.title);
+      console.log("🔍 SourcesPanel: Source object:", source);
+      console.log("🔍 SourcesPanel: Source.insights:", source.insights);
+      
+      // Use the insights that are already available in the source object
+      if (source.insights && Array.isArray(source.insights)) {
+        console.log("🔍 SourcesPanel: Insights array:", source.insights);
+        source.insights.forEach((insight, index) => {
+          console.log(`🔍 SourcesPanel: Insight ${index}:`, insight);
+        });
+        setSourceInsights(source.insights);
+        console.log("✅ SourcesPanel: Loaded", source.insights.length, "insights from source object");
+      } else {
+        setSourceInsights([]);
+        console.log("ℹ️ SourcesPanel: No insights found in source object");
+      }
+    } catch (error) {
+      console.error("❌ SourcesPanel: Error loading insights:", error);
+      setSourceInsights([]);
     }
   };
 
@@ -148,14 +194,13 @@ export function SourcesPanel({ notebookId, notebookName }: SourcesPanelProps) {
     console.log("🚀 Starting file upload, setting addingSource to true");
     setAddingSource(true);
     try {
-      const fileType = files[0].name.split('.').pop() || 'txt';
       const formData = new FormData();
       formData.append('file', files[0]);
-      formData.append('type', fileType);
-      await sourcesAPI.createByNotebookName(notebookName, formData);
+      formData.append('type', 'upload');
+      const result = await sourcesAPI.createByNotebookName(notebookName, formData);
       toast({
         title: "File uploaded",
-        description: "Your file has been added to the notebook.",
+        description: result.title ? `"${result.title}" has been added to the notebook.` : "Your file has been added to the notebook.",
       });
       loadSources();
       setShowAddForm(false);
@@ -178,14 +223,13 @@ export function SourcesPanel({ notebookId, notebookName }: SourcesPanelProps) {
     console.log("🚀 Starting URL submit, setting addingSource to true");
     setAddingSource(true);
     try {
-      const isYoutube = urlInput.includes('youtube.com') || urlInput.includes('youtu.be');
       const formData = new FormData();
-      formData.append('content', urlInput);
-      formData.append('type', isYoutube ? 'youtube' : 'website');
-      await sourcesAPI.createByNotebookName(notebookName, formData);
+      formData.append('url', urlInput);
+      formData.append('type', 'link');
+      const result = await sourcesAPI.createByNotebookName(notebookName, formData);
       toast({
         title: "URL added",
-        description: "The URL has been added to your notebook.",
+        description: result.title ? `"${result.title}" has been added to your notebook.` : "The URL has been added to your notebook.",
       });
       setUrlInput("");
       loadSources();
@@ -211,11 +255,11 @@ export function SourcesPanel({ notebookId, notebookName }: SourcesPanelProps) {
     try {
       const formData = new FormData();
       formData.append('content', textInput);
-      formData.append('type', 'txt');
-      await sourcesAPI.createByNotebookName(notebookName, formData);
+      formData.append('type', 'text');
+      const result = await sourcesAPI.createByNotebookName(notebookName, formData);
       toast({
         title: "Text added",
-        description: "Your text has been added to the notebook.",
+        description: result.title ? `"${result.title}" has been added to the notebook.` : "Your text has been added to the notebook.",
       });
       setTextInput("");
       loadSources();
@@ -238,17 +282,62 @@ export function SourcesPanel({ notebookId, notebookName }: SourcesPanelProps) {
 
     setAddingSource(true);
     try {
-      // Mock discovery - in real app this would call an API
       toast({
         title: "Discovering sources",
         description: `Finding sources related to: ${discoverQuery}`,
       });
-      setDiscoverQuery("");
+      
+      // Call Serper API to search for relevant sources
+      const searchResponse = await serperAPI.search(discoverQuery, {
+        num_results: 10,
+        country: "us",
+        language: "en"
+      });
+      
+      console.log("🔍 Search results:", searchResponse);
+      setSearchResults(searchResponse.results || []);
+      setShowSearchResults(true);
       setShowDiscoverForm(false);
+      
+      toast({
+        title: "Sources discovered",
+        description: `Found ${searchResponse.results?.length || 0} relevant sources`,
+      });
     } catch (error) {
+      console.error("❌ Discovery failed:", error);
       toast({
         title: "Discovery failed",
-        description: "Please try again.",
+        description: "Failed to search for sources. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setAddingSource(false);
+    }
+  };
+
+  const handleAddSearchResult = async (result: any) => {
+    setAddingSource(true);
+    try {
+      const formData = new FormData();
+      formData.append('url', result.link);
+      formData.append('type', 'link');
+      formData.append('title', result.title);
+      
+      await sourcesAPI.createByNotebookName(notebookName, formData);
+      
+      toast({
+        title: "Source added",
+        description: `Added "${result.title}" to your notebook`,
+      });
+      
+      // Remove the added result from search results
+      setSearchResults(prev => prev.filter(r => r.link !== result.link));
+      loadSources();
+    } catch (error) {
+      console.error("❌ Failed to add source:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add source. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -268,17 +357,8 @@ export function SourcesPanel({ notebookId, notebookName }: SourcesPanelProps) {
       
       console.log("✅ SourcesPanel: Transformation result:", result);
       
-      // Extract the actual AI-generated content from the results
-      let aiContent = `Successfully applied "${transformation}" transformation. Applied: ${result.total_applied}, Failed: ${result.total_failed}`;
-      
-      if (result.results && result.results.length > 0) {
-        const firstResult = result.results[0];
-        if (firstResult.success && firstResult.output) {
-          aiContent = firstResult.output;
-        }
-      }
-      
-      setTransformationResult(aiContent);
+      // Clear any previous transformation errors since insights will be displayed individually
+      setTransformationError("");
       
       toast({
         title: "Transformation completed",
@@ -286,11 +366,19 @@ export function SourcesPanel({ notebookId, notebookName }: SourcesPanelProps) {
       });
       
       // Reload sources to get updated insights
-      await loadSources();
+      const updatedSources = await loadSources();
+      
+      // Reload insights for the current source (from the updated source object)
+      if (selectedSource && updatedSources) {
+        const updatedSource = updatedSources.find(s => s.title === selectedSource.title);
+        if (updatedSource) {
+          await loadSourceInsights(updatedSource);
+        }
+      }
       
     } catch (error) {
       console.error("❌ SourcesPanel: Transformation error:", error);
-      setTransformationResult(`Failed to apply "${transformation}" transformation: ${error.message}`);
+      setTransformationError(`Failed to apply "${transformation}" transformation: ${error.message}`);
       
       toast({
         title: "Transformation failed",
@@ -302,26 +390,24 @@ export function SourcesPanel({ notebookId, notebookName }: SourcesPanelProps) {
     }
   };
 
+
   const handleRenameSource = async () => {
-    if (!editingSourceTitle.trim() || !editingSourceId) return;
-    
-    // Find the source being edited
-    const sourceToEdit = sources.find(s => s.id === editingSourceId);
-    if (!sourceToEdit) return;
+    if (!sourceToRename || !renameTitle.trim()) return;
     
     try {
       // Use the source ID for update if title is empty, otherwise use title
-      if (sourceToEdit.title && sourceToEdit.title.trim()) {
-        await sourcesAPI.updateByTitle(sourceToEdit.title, { title: editingSourceTitle.trim() });
+      if (sourceToRename.title && sourceToRename.title.trim()) {
+        await sourcesAPI.updateByTitle(sourceToRename.title, { title: renameTitle.trim() });
       } else {
-        await sourcesAPI.update(sourceToEdit.id, { title: editingSourceTitle.trim() });
+        await sourcesAPI.update(sourceToRename.id, { title: renameTitle.trim() });
       }
       toast({
         title: "Source renamed",
-        description: `Source renamed to "${editingSourceTitle.trim()}".`,
+        description: `Source renamed to "${renameTitle.trim()}".`,
       });
-      setEditingSourceTitle("");
-      setEditingSourceId(null);
+      setShowRenameModal(false);
+      setRenameTitle("");
+      setSourceToRename(null);
       await loadSources(); // Reload to get updated data
     } catch (error) {
       console.error("❌ SourcesPanel: Error renaming source:", error);
@@ -331,6 +417,14 @@ export function SourcesPanel({ notebookId, notebookName }: SourcesPanelProps) {
         variant: "destructive",
       });
     }
+  };
+
+  const openRenameModal = (source: Source) => {
+    console.log("🔧 Opening rename modal for source:", source.title);
+    setSourceToRename(source);
+    setRenameTitle(source.title);
+    setShowRenameModal(true);
+    console.log("🔧 Modal state set to true");
   };
 
   const handleDeleteSource = async () => {
@@ -361,31 +455,38 @@ export function SourcesPanel({ notebookId, notebookName }: SourcesPanelProps) {
     }
   };
 
-  const startEditingSource = (source?: Source) => {
-    const sourceToEdit = source || selectedSource;
-    if (sourceToEdit) {
-      setSelectedSource(sourceToEdit);
-      setEditingSourceTitle(sourceToEdit.title);
-      setIsEditingSource(true);
-    }
-  };
-
-  const cancelEditingSource = () => {
-    setIsEditingSource(false);
-    setEditingSourceTitle("");
-  };
 
   const handleSourceSelect = (source: Source) => {
     setSelectedSource(source);
-    setTransformationResult(""); // Clear previous results
+    setTransformationError(""); // Clear previous errors
+    setSourceInsights([]); // Clear previous insights
     
-    // Load existing insights/transformations for this source
-    if (source.insights && source.insights.length > 0) {
-      // Display the most recent insight
-      const latestInsight = source.insights[source.insights.length - 1];
-      if (latestInsight.content) {
-        setTransformationResult(latestInsight.content);
-      }
+    // Load insights for this source
+    loadSourceInsights(source);
+  };
+
+  const handleSaveInsightAsNote = async (insight: any) => {
+    if (!selectedSource || !notebookId) return;
+    
+    try {
+      const noteTitle = `${insight.insight_type || insight.title || 'Insight'} from ${selectedSource.title}`;
+      await notesAPI.create({
+        title: noteTitle,
+        content: insight.content,
+        notebook_id: notebookId,
+      });
+      
+      toast({
+        title: "Note created",
+        description: `Insight saved as note: "${noteTitle}"`,
+      });
+    } catch (error) {
+      console.error("❌ SourcesPanel: Error saving insight as note:", error);
+      toast({
+        title: "Failed to save note",
+        description: "Failed to save insight as note. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -440,38 +541,32 @@ export function SourcesPanel({ notebookId, notebookName }: SourcesPanelProps) {
                 {getSourceIcon(selectedSource.type)}
               </div>
                 <div className="flex-1 min-w-0">
-                 {isEditingSource ? (
-                   <div className="flex items-center gap-2">
-                     <Input
-                       value={editingSourceTitle}
-                       onChange={(e) => setEditingSourceTitle(e.target.value)}
-                       className="text-sm sm:text-base lg:text-lg font-semibold h-8"
-                       onKeyDown={(e) => {
-                         if (e.key === 'Enter') handleRenameSource();
-                         if (e.key === 'Escape') cancelEditingSource();
-                       }}
-                       autoFocus
-                     />
-                     <Button size="sm" onClick={handleRenameSource} className="h-8 px-2">
-                       <Check className="h-3 w-3" />
+                 <div className="flex items-center justify-between">
+                   <h2 className="text-sm sm:text-base lg:text-lg font-semibold truncate">{selectedSource.title}</h2>
+                   <div className="flex items-center gap-1 ml-2">
+                     <Button 
+                       size="sm" 
+                       variant="ghost" 
+                       onClick={() => {
+                         console.log("🔧 Edit button clicked for source:", selectedSource.title);
+                         openRenameModal(selectedSource);
+                       }} 
+                       className="h-6 w-6 p-0"
+                       title="Rename source"
+                     >
+                       <Edit className="h-3 w-3" />
                      </Button>
-                     <Button size="sm" variant="outline" onClick={cancelEditingSource} className="h-8 px-2">
-                       <X className="h-3 w-3" />
+                     <Button 
+                       size="sm" 
+                       variant="ghost" 
+                       onClick={() => setShowDeleteConfirm(true)} 
+                       className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                       title="Delete source"
+                     >
+                       <Trash2 className="h-3 w-3" />
                      </Button>
                    </div>
-                 ) : (
-                   <div className="flex items-center justify-between">
-                     <h2 className="text-sm sm:text-base lg:text-lg font-semibold truncate">{selectedSource.title}</h2>
-                     <div className="flex items-center gap-1 ml-2">
-                       <Button size="sm" variant="ghost" onClick={startEditingSource} className="h-6 w-6 p-0">
-                         <Edit className="h-3 w-3" />
-                       </Button>
-                       <Button size="sm" variant="ghost" onClick={() => setShowDeleteConfirm(true)} className="h-6 w-6 p-0 text-destructive hover:text-destructive">
-                         <Trash2 className="h-3 w-3" />
-                       </Button>
-                     </div>
-                   </div>
-                 )}
+                 </div>
                 <div className="flex flex-wrap items-center gap-2 mt-0.5">
                   <Badge variant="secondary" className="text-xs">{selectedSource.type}</Badge>
                   <span className="text-xs text-muted-foreground">
@@ -512,11 +607,100 @@ export function SourcesPanel({ notebookId, notebookName }: SourcesPanelProps) {
         {/* Source Content */}
         <ScrollArea className="flex-1">
           <div className="p-4 sm:p-6">
-            <div className="bg-card rounded-lg p-4 sm:p-6 min-h-[400px]">
-              {transformationResult ? (
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-base sm:text-lg">Transformation Result</h3>
-                  <p className="text-sm sm:text-base text-muted-foreground">{transformationResult}</p>
+            {/* Insights Section */}
+            {sourceInsights.length > 0 && (
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-base sm:text-lg flex items-center gap-2">
+                    <Lightbulb className="h-4 w-4 text-primary" />
+                    Transformation Insights ({sourceInsights.length})
+                  </h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => selectedSource && loadSourceInsights(selectedSource)}
+                    className="h-8 text-xs"
+                  >
+                    <RefreshCw className="h-3 w-3 mr-1" />
+                    Refresh
+                  </Button>
+                </div>
+                
+                <Accordion type="multiple" className="space-y-2">
+                  {sourceInsights.map((insight, index) => (
+                    <AccordionItem key={insight.id || index} value={`insight-${index}`} className="border rounded-lg">
+                      <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                        <div className="flex items-center gap-2 text-left">
+                          <BookOpen className="h-4 w-4 text-primary" />
+                          <span className="font-medium">{insight.insight_type || insight.title || `Insight ${index + 1}`}</span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-4 pb-4">
+                        <div className="space-y-3">
+                          <div className="prose prose-sm max-w-none">
+                            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                              {insight.content}
+                            </p>
+                          </div>
+                          <div className="flex gap-2 pt-2 border-t">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 text-xs"
+                              onClick={() => {
+                                // Copy to clipboard
+                                navigator.clipboard.writeText(insight.content);
+                                toast({
+                                  title: "Copied to clipboard",
+                                  description: "Insight content copied to clipboard.",
+                                });
+                              }}
+                            >
+                              Copy
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 text-xs"
+                              onClick={() => handleSaveInsightAsNote(insight)}
+                            >
+                              Save as Note
+                            </Button>
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              </div>
+            )}
+
+            {/* Transformation Error Display */}
+            {transformationError && (
+              <div className="mb-6">
+                <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-4">
+                  <h3 className="font-semibold text-base sm:text-lg mb-2 flex items-center gap-2 text-destructive">
+                    <X className="h-4 w-4" />
+                    Transformation Error
+                  </h3>
+                  <p className="text-sm sm:text-base text-destructive whitespace-pre-wrap">
+                    {transformationError}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Source Content Preview */}
+            <div className="bg-card rounded-lg p-4 sm:p-6 min-h-[200px]">
+              <h3 className="font-semibold text-base sm:text-lg mb-3">Source Content</h3>
+              {selectedSource?.full_text ? (
+                <div className="prose prose-sm max-w-none">
+                  <p className="text-sm text-muted-foreground">
+                    {selectedSource.full_text.length > 500 
+                      ? `${selectedSource.full_text.substring(0, 500)}...` 
+                      : selectedSource.full_text
+                    }
+                  </p>
                 </div>
               ) : (
                 <p className="text-sm sm:text-base text-muted-foreground">
@@ -758,6 +942,91 @@ export function SourcesPanel({ notebookId, notebookName }: SourcesPanelProps) {
     );
   }
 
+  // Show search results view
+  if (showSearchResults) {
+    return (
+      <>
+        {addingSource && <LoadingOverlay />}
+        <div className="h-full flex flex-col bg-background">
+          {/* Search Results Header */}
+          <div className="p-4 sm:p-6 border-b bg-card">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg sm:text-xl font-semibold">Search Results</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Found {searchResults.length} sources for "{discoverQuery}"
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setShowSearchResults(false);
+                  setSearchResults([]);
+                  setDiscoverQuery("");
+                }}
+                disabled={addingSource}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Search Results List */}
+          <ScrollArea className="flex-1">
+            <div className="p-4 sm:p-6">
+              {searchResults.length === 0 ? (
+                <div className="text-center py-12">
+                  <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No results found</h3>
+                  <p className="text-muted-foreground">Try a different search query</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {searchResults.map((result, index) => (
+                    <Card key={index} className="p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Globe className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <h3 className="font-medium text-sm sm:text-base line-clamp-2">
+                              {result.title}
+                            </h3>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
+                            {result.snippet}
+                          </p>
+                          <a 
+                            href={result.link} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-xs text-primary hover:underline flex items-center gap-1"
+                          >
+                            {result.link}
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => handleAddSearchResult(result)}
+                          disabled={addingSource}
+                          className="flex-shrink-0"
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          Add
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+      </>
+    );
+  }
+
   // Default sources list view
   return (
     <>
@@ -785,6 +1054,16 @@ export function SourcesPanel({ notebookId, notebookName }: SourcesPanelProps) {
             >
               Discover
             </Button>
+            {sources.length > 0 && (
+              <Button 
+                onClick={() => openRenameModal(sources[0])}
+                size="sm"
+                variant="outline"
+                className="h-8 sm:h-9 text-xs sm:text-sm"
+              >
+                Test Rename
+              </Button>
+            )}
           </div>
         </div>
         
@@ -812,87 +1091,66 @@ export function SourcesPanel({ notebookId, notebookName }: SourcesPanelProps) {
               </p>
             </div>
           ) : (
-            <div className="grid gap-2">
+            <div className="grid gap-1">
               {filteredSources.map((source) => (
                   <Card 
                     key={source.id} 
-                    className="group hover:bg-accent/50 transition-colors cursor-pointer h-12 flex items-center overflow-hidden w-full max-w-full"
+                    className="group hover:bg-accent/50 transition-colors cursor-pointer relative"
                     onClick={() => handleSourceSelect(source)}
                   >
-                  <CardContent className="p-2 h-full flex items-center w-full max-w-full overflow-hidden">
-                    <div className="flex items-center justify-between gap-2 w-full max-w-full overflow-hidden">
-                      <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden" style={{maxWidth: 'calc(100% - 80px)'}}>
-                        <span className="text-sm flex-shrink-0">{getSourceIcon(source.type)}</span>
-                        <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
-                           {editingSourceId === source.id ? (
-                             <Input
-                               value={editingSourceTitle}
-                               onChange={(e) => setEditingSourceTitle(e.target.value)}
-                               className="text-xs sm:text-sm font-medium h-6 flex-1"
-                               onKeyDown={(e) => {
-                                 if (e.key === 'Enter') {
-                                   handleRenameSource();
-                                 }
-                                 if (e.key === 'Escape') {
-                                   setEditingSourceId(null);
-                                   setEditingSourceTitle("");
-                                 }
-                               }}
-                               autoFocus
-                             />
-                           ) : (
-                              <div className="flex-1 min-w-0 overflow-hidden">
-                                <h4 className="font-medium truncate text-xs sm:text-sm">
-                                  {source.title}
-                                </h4>
-                              </div>
-                           )}
-                           <DropdownMenu>
-                         <DropdownMenuTrigger asChild>
-                           <Button 
-                             variant="ghost" 
-                             size="icon" 
-                             className="h-7 w-7 sm:h-8 sm:w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                             onClick={(e) => e.stopPropagation()}
-                           >
-                             <MoreVertical className="h-3 w-3 sm:h-4 sm:w-4" />
-                           </Button>
-                         </DropdownMenuTrigger>
-                         <DropdownMenuContent align="end">
-                           <DropdownMenuItem 
-                             onClick={(e) => {
-                               e.stopPropagation();
-                               setSelectedSource(source);
-                               setEditingSourceTitle(source.title);
-                               setEditingSourceId(source.id);
-                               // Focus the input after state update
-                               setTimeout(() => {
-                                 const input = document.querySelector('input[autofocus]') as HTMLInputElement;
-                                 if (input) {
-                                   input.focus();
-                                   input.select();
-                                 }
-                               }, 10);
-                             }}
-                           >
-                             <Edit className="h-4 w-4 mr-2" />
-                             Rename source
-                           </DropdownMenuItem>
-                           <DropdownMenuItem 
-                             className="text-destructive"
-                             onClick={(e) => {
-                               e.stopPropagation();
-                               setSelectedSource(source);
-                               setShowDeleteConfirm(true);
-                             }}
-                           >
-                             <Trash2 className="h-4 w-4 mr-2" />
-                             Remove source
-                           </DropdownMenuItem>
-                         </DropdownMenuContent>
-                           </DropdownMenu>
+                  <CardContent className="p-2">
+                    <div className="flex items-center justify-between gap-1">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <div className="p-1 bg-primary/10 rounded shrink-0">
+                          {getSourceIcon(source.type)}
                         </div>
+                          <div className="flex-1 min-w-0">
+                           <div className="flex items-start gap-1">
+                             <h4 className="font-medium text-sm leading-tight break-words">{source.title}</h4>
+                             {source.title && !source.title.includes('File:') && !source.title.includes('Link:') && source.title !== 'Untitled Source' && (
+                               <Sparkles className="h-2.5 w-2.5 text-primary/60 mt-0.5 flex-shrink-0" title="AI-generated title" />
+                             )}
+                             {source.insights && source.insights.length > 0 && (
+                               <Lightbulb className="h-2.5 w-2.5 text-yellow-500 mt-0.5 flex-shrink-0" title={`${source.insights.length} transformation(s) applied`} />
+                             )}
+                           </div>
+                          </div>
                         </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-5 w-5 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreVertical className="h-2.5 w-2.5" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openRenameModal(source);
+                              }}
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              Rename source
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedSource(source);
+                                setShowDeleteConfirm(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Remove source
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -904,19 +1162,86 @@ export function SourcesPanel({ notebookId, notebookName }: SourcesPanelProps) {
     
     {/* Delete Confirmation Dialog */}
     {showDeleteConfirm && selectedSource && (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div className="bg-background border border-border rounded-lg p-6 max-w-md w-full mx-4">
-          <h3 className="text-lg font-semibold mb-2">Delete Source</h3>
-          <p className="text-muted-foreground mb-4">
-            Are you sure you want to delete "{selectedSource.title}"? This action cannot be undone.
-          </p>
-          <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteSource}>
-              Delete
-            </Button>
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
+        <div className="bg-background border border-border rounded-lg max-w-lg w-full mx-4">
+          <div className="p-4 border-b">
+            <h3 className="text-xl font-semibold">Delete Source</h3>
+          </div>
+          <div className="p-6">
+            <p className="text-muted-foreground">
+              Are you sure you want to delete "{selectedSource.title}"? This action cannot be undone.
+            </p>
+          </div>
+          <div className="flex justify-end p-4 border-t bg-muted/20">
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowDeleteConfirm(false)}
+                className="text-base"
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleDeleteSource}
+                className="text-base"
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Rename Source Dialog */}
+    {showRenameModal && sourceToRename && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
+        <div className="bg-background border border-border rounded-lg max-w-lg w-full mx-4">
+          <div className="p-4 border-b">
+            <h3 className="text-xl font-semibold">Rename {sourceToRename.title}</h3>
+          </div>
+          <div className="p-6">
+            <label className="block text-sm font-medium mb-2">Source name*</label>
+            <Input
+              value={renameTitle}
+              onChange={(e) => setRenameTitle(e.target.value)}
+              placeholder="Enter new title..."
+              className="mb-4 w-full bg-background border border-border text-base py-3 px-4"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleRenameSource();
+                }
+                if (e.key === 'Escape') {
+                  setShowRenameModal(false);
+                  setRenameTitle("");
+                  setSourceToRename(null);
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <div className="flex justify-end p-4 border-t bg-muted/20">
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowRenameModal(false);
+                  setRenameTitle("");
+                  setSourceToRename(null);
+                }}
+                className="text-base"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleRenameSource} 
+                disabled={!renameTitle.trim()}
+                className="bg-primary text-primary-foreground hover:bg-primary/90 text-base"
+              >
+                Save
+              </Button>
+            </div>
           </div>
         </div>
       </div>

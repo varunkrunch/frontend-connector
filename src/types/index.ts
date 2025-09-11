@@ -39,10 +39,11 @@ export interface Source {
 
 export interface SourceInsight {
   id: string;
-  source: string;
-  title: string;
+  source?: string;
+  title?: string;
   content: string;
-  type: string;
+  type?: string; // For backward compatibility
+  insight_type?: string; // This is what the API actually returns
   created?: string;
   updated?: string;
   metadata?: Record<string, any>;

@@ -128,6 +128,16 @@ export const notesAPI = {
     return await apiRequest('/notes');
   },
   
+  listByNotebookName: async (notebookName: string) => {
+    console.log("notesAPI.listByNotebookName called with name:", notebookName);
+    return await apiRequest(`/notebooks/by-name/${encodeURIComponent(notebookName)}/notes`);
+  },
+  
+  getByTitle: async (noteTitle: string) => {
+    console.log("notesAPI.getByTitle called with title:", noteTitle);
+    return await apiRequest(`/notes/by-title/${encodeURIComponent(noteTitle)}`);
+  },
+  
   create: async (data: { title: string; content: string; notebook_id: string }) => {
     console.log("notesAPI.create called with:", data);
     return await apiRequest('/notes', {
@@ -284,6 +294,13 @@ export const sourcesAPI = {
       method: 'POST',
     });
   },
+  
+  generateTitle: async (id: string) => {
+    console.log("sourcesAPI.generateTitle called with id:", id);
+    return await apiRequest(`/sources/${encodeURIComponent(id)}/generate-title`, {
+      method: 'POST',
+    });
+  },
 };
 
 // Podcasts API
@@ -377,5 +394,38 @@ export const chatAPI = {
     if (sessionId) params.append('session_id', sessionId);
     
     return await apiRequest(`/chat/history?${params.toString()}`);
+  },
+};
+
+// Serper API for Google Search
+export const serperAPI = {
+  getOptions: async () => {
+    console.log("serperAPI.getOptions called");
+    return await apiRequest('/serper/options');
+  },
+  
+  search: async (query: string, options?: {
+    num_results?: number;
+    country?: string;
+    language?: string;
+  }) => {
+    console.log("serperAPI.search called with query:", query, "options:", options);
+    const params = new URLSearchParams({ query });
+    if (options?.num_results) params.append('num_results', options.num_results.toString());
+    if (options?.country) params.append('country', options.country);
+    if (options?.language) params.append('language', options.language);
+    
+    const endpoint = `/serper/search?${params.toString()}`;
+    console.log("🌐 Making request to endpoint:", endpoint);
+    console.log("🌐 Full URL would be:", `${API_BASE_URL}${API_VERSION}${endpoint}`);
+    
+    try {
+      const result = await apiRequest(endpoint);
+      console.log("✅ serperAPI.search successful:", result);
+      return result;
+    } catch (error) {
+      console.error("❌ serperAPI.search failed:", error);
+      throw error;
+    }
   },
 };
