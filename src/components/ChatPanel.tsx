@@ -12,7 +12,6 @@ import {
   Copy,
   ThumbsUp,
   ThumbsDown,
-  RefreshCw,
   FileText
 } from "lucide-react";
 import { chatAPI, notesAPI } from "@/services/api";
@@ -24,10 +23,13 @@ interface ChatPanelProps {
   onNoteSaved?: () => void;
 }
 
+
 export function ChatPanel({ notebookId, onNoteSaved }: ChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [contextConfig, setContextConfig] = useState<Record<string, string>>({});
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -46,11 +48,46 @@ export function ChatPanel({ notebookId, onNoteSaved }: ChatPanelProps) {
   const loadChatHistory = async () => {
     try {
       const history = await chatAPI.history(notebookId);
-      setMessages(history);
+      setMessages(history.messages || []);
+      setCurrentSessionId(history.session_id || null);
+      console.log("Loaded chat history:", history);
     } catch (error) {
       console.error("Failed to load chat history:", error);
     }
   };
+
+  const handleSaveAsNote = async (content: string) => {
+    try {
+      setLoading(true);
+      console.log("Saving AI response as note...");
+      
+      const note = await notesAPI.createFromChat(content, notebookId);
+      
+      toast({
+        title: "Note Saved",
+        description: `AI response has been saved as a note: "${note.title}"`,
+        duration: 3000,
+      });
+      
+      // Trigger refresh of notes panel if callback is provided
+      if (onNoteSaved) {
+        onNoteSaved();
+      }
+      
+      console.log("Note saved successfully:", note);
+    } catch (error) {
+      console.error("Failed to save note:", error);
+      toast({
+        title: "Error",
+        description: "Failed to save AI response as note. Please try again.",
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   const handleSendMessage = async () => {
     if (!input.trim() || loading) return;
@@ -71,17 +108,25 @@ export function ChatPanel({ notebookId, onNoteSaved }: ChatPanelProps) {
       const response = await chatAPI.send({
         notebook_id: notebookId,
         message: input,
+        session_id: currentSessionId || undefined,
+        context_config: contextConfig,
       });
 
       const assistantMessage: ChatMessage = {
-        id: Date.now().toString() + "-assistant",
+        id: response.id || Date.now().toString() + "-assistant",
         notebook_id: notebookId,
-        role: "assistant",
+        role: response.role || "assistant",
         content: response.content,
-        timestamp: new Date().toISOString(),
+        timestamp: response.timestamp || new Date().toISOString(),
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+      
+      // Update session ID if we got a new one
+      if (response.session_id && response.session_id !== currentSessionId) {
+        setCurrentSessionId(response.session_id);
+        console.log("New session created:", response.session_id);
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -104,33 +149,6 @@ export function ChatPanel({ notebookId, onNoteSaved }: ChatPanelProps) {
     });
   };
 
-  const handleSaveAsNote = async (content: string) => {
-    try {
-      const noteTitle = `AI Response - ${new Date().toLocaleDateString()}`;
-      
-      await notesAPI.create({
-        notebook_id: notebookId,
-        title: noteTitle,
-        content: content,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      });
-      
-      toast({
-        title: "Note saved",
-        description: "AI response has been saved as a note.",
-      });
-      
-      // Notify parent component to refresh notes
-      onNoteSaved?.();
-    } catch (error) {
-      toast({
-        title: "Failed to save note",
-        description: "Could not save the AI response as a note.",
-        variant: "destructive",
-      });
-    }
-  };
 
   return (
     <>
@@ -149,61 +167,57 @@ export function ChatPanel({ notebookId, onNoteSaved }: ChatPanelProps) {
               </p>
             </div>
           </div>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={loadChatHistory} 
-            className="h-8 w-8 sm:h-9 sm:w-9"
-          >
-            <RefreshCw className="h-3 w-3 sm:h-4 sm:w-4" />
-          </Button>
         </div>
       </div>
+
+
+      {/* Start Conversation Section - Only show when no messages */}
+      {messages.length === 0 && (
+        <div className="p-4 sm:p-6 border-b border-border bg-muted/20">
+          <div className="max-w-4xl mx-auto text-center">
+            <Sparkles className="h-8 w-8 sm:h-10 sm:w-10 mx-auto mb-3 sm:mb-4 text-primary" />
+            <h3 className="text-base sm:text-lg font-semibold mb-2">Start a conversation</h3>
+            <p className="text-sm sm:text-base text-muted-foreground mb-4 sm:mb-6">
+              Ask questions about your sources, get summaries, or explore insights
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-2xl mx-auto">
+              <Button
+                variant="outline"
+                className="justify-start text-xs sm:text-sm h-auto py-2 px-3 transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
+                onClick={() => setInput("Summarize all my sources")}
+              >
+                Summarize all my sources
+              </Button>
+              <Button
+                variant="outline"
+                className="justify-start text-xs sm:text-sm h-auto py-2 px-3 transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
+                onClick={() => setInput("What are the key insights?")}
+              >
+                What are the key insights?
+              </Button>
+              <Button
+                variant="outline"
+                className="justify-start text-xs sm:text-sm h-auto py-2 px-3 transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
+                onClick={() => setInput("Generate study questions")}
+              >
+                Generate study questions
+              </Button>
+              <Button
+                variant="outline"
+                className="justify-start text-xs sm:text-sm h-auto py-2 px-3 transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
+                onClick={() => setInput("Create an outline")}
+              >
+                Create an outline
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Messages */}
       <ScrollArea className="flex-1 p-3 sm:p-4">
         <div className="space-y-3 sm:space-y-4 max-w-4xl mx-auto">
-          {messages.length === 0 ? (
-            <Card>
-              <CardContent className="text-center py-8 sm:py-12 px-4 sm:px-6">
-                <Sparkles className="h-8 w-8 sm:h-10 sm:w-10 mx-auto mb-3 sm:mb-4 text-primary" />
-                <h3 className="text-base sm:text-lg font-semibold mb-2">Start a conversation</h3>
-                <p className="text-sm sm:text-base text-muted-foreground mb-4 sm:mb-6">
-                  Ask questions about your sources, get summaries, or explore insights
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-2xl mx-auto">
-                  <Button
-                    variant="outline"
-                    className="justify-start text-xs sm:text-sm h-auto py-2 px-3 transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
-                    onClick={() => setInput("Summarize all my sources")}
-                  >
-                    Summarize all my sources
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="justify-start text-xs sm:text-sm h-auto py-2 px-3 transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
-                    onClick={() => setInput("What are the key insights?")}
-                  >
-                    What are the key insights?
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="justify-start text-xs sm:text-sm h-auto py-2 px-3 transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
-                    onClick={() => setInput("Generate study questions")}
-                  >
-                    Generate study questions
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="justify-start text-xs sm:text-sm h-auto py-2 px-3 transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
-                    onClick={() => setInput("Create an outline")}
-                  >
-                    Create an outline
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
+          {messages.length > 0 && (
             messages.map((message) => (
               <div
                 key={message.id}
@@ -234,10 +248,15 @@ export function ChatPanel({ notebookId, onNoteSaved }: ChatPanelProps) {
                         variant="outline"
                         size="sm"
                         onClick={() => handleSaveAsNote(message.content)}
-                        className="h-7 px-3 text-xs bg-white border-border/50 hover:bg-muted/50 transition-all duration-200 hover:scale-105 active:scale-95"
+                        disabled={loading}
+                        className="h-7 px-3 text-xs bg-white border-border/50 hover:bg-muted/50 transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                         title="Save as Note"
                       >
-                        <FileText className="h-3 w-3 mr-1" />
+                        {loading ? (
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        ) : (
+                          <FileText className="h-3 w-3 mr-1" />
+                        )}
                         Save as Note
                       </Button>
                     </div>

@@ -145,6 +145,14 @@ export const notesAPI = {
       body: JSON.stringify(data),
     });
   },
+
+  createInNotebook: async (notebookName: string, data: { title: string; content: string }) => {
+    console.log("notesAPI.createInNotebook called with notebook:", notebookName, "data:", data);
+    return await apiRequest(`/notebooks/by-name/${encodeURIComponent(notebookName)}/notes`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
   
   get: async (id: string) => {
     console.log("notesAPI.get called with id:", id);
@@ -163,6 +171,17 @@ export const notesAPI = {
     console.log("notesAPI.delete called with id:", id);
     return await apiRequest(`/notes/${id}`, {
       method: 'DELETE',
+    });
+  },
+  
+  createFromChat: async (content: string, notebookId: string) => {
+    console.log("notesAPI.createFromChat called with content length:", content.length, "notebookId:", notebookId);
+    return await apiRequest('/notes/from-chat', {
+      method: 'POST',
+      body: JSON.stringify({
+        content,
+        notebook_id: notebookId
+      }),
     });
   },
 };
@@ -274,6 +293,13 @@ export const sourcesAPI = {
       method: 'DELETE',
     });
   },
+
+  saveInsightAsNote: async (sourceId: string, insightId: string, notebookId: string) => {
+    console.log("sourcesAPI.saveInsightAsNote called with:", { sourceId, insightId, notebookId });
+    return await apiRequest(`/sources/${encodeURIComponent(sourceId)}/insights/${encodeURIComponent(insightId)}/save-as-note?notebook_id=${encodeURIComponent(notebookId)}`, {
+      method: 'POST',
+    });
+  },
   
   runTransformations: async (id: string, transformationNames: string, llmId?: string) => {
     console.log("sourcesAPI.runTransformations called with id:", id, "transformations:", transformationNames);
@@ -307,13 +333,17 @@ export const sourcesAPI = {
 export const podcastsAPI = {
   list: async (notebookId?: string) => {
     console.log("podcastsAPI.list called with notebookId:", notebookId);
-    if (notebookId) {
-      return await apiRequest(`/notebooks/${notebookId}/podcasts`);
-    }
+    // Always use the episodes endpoint since the backend doesn't have notebook-specific podcast endpoints
     return await apiRequest('/podcasts/episodes');
   },
   
-  generate: async (data: { notebook_id: string; title?: string; description?: string }) => {
+  generate: async (data: { 
+    template_name: string; 
+    notebook_name: string; 
+    episode_name?: string; 
+    instructions?: string; 
+    podcast_length?: string;
+  }) => {
     console.log("podcastsAPI.generate called with:", data);
     return await apiRequest('/podcasts/generate', {
       method: 'POST',
@@ -327,14 +357,30 @@ export const podcastsAPI = {
   },
   
   getAudio: (id: string) => {
-    return `${API_BASE_URL}${API_VERSION}/podcasts/${id}/audio`;
+    return `${API_BASE_URL}${API_VERSION}/podcasts/episodes/${id}/audio`;
   },
   
   delete: async (id: string) => {
     console.log("podcastsAPI.delete called with id:", id);
-    return await apiRequest(`/podcasts/${id}`, {
+    return await apiRequest(`/podcasts/episodes/${id}`, {
       method: 'DELETE',
     });
+  },
+
+  // Additional podcast API methods
+  getTemplates: async () => {
+    console.log("podcastsAPI.getTemplates called");
+    return await apiRequest('/podcasts/templates');
+  },
+
+  getModels: async () => {
+    console.log("podcastsAPI.getModels called");
+    return await apiRequest('/podcasts/models');
+  },
+
+  getSuggestions: async () => {
+    console.log("podcastsAPI.getSuggestions called");
+    return await apiRequest('/podcasts/suggestions');
   },
 };
 
@@ -380,20 +426,37 @@ export const transformationsAPI = {
 
 // Chat API
 export const chatAPI = {
-  sendMessage: async (data: { message: string; notebook_id: string; session_id?: string }) => {
-    console.log("chatAPI.sendMessage called with:", data);
-    return await apiRequest('/chat', {
+  send: async (data: { message: string; notebook_id: string; session_id?: string; context_config?: Record<string, string> }) => {
+    console.log("chatAPI.send called with:", data);
+    const params = new URLSearchParams({ notebook_id: data.notebook_id });
+    if (data.session_id) params.append('session_id', data.session_id);
+    
+    const requestBody = { 
+      message: data.message,
+      context_config: data.context_config || {}
+    };
+    console.log("Request body:", requestBody);
+    console.log("Request URL:", `/chat/message?${params.toString()}`);
+    
+    return await apiRequest(`/chat/message?${params.toString()}`, {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(requestBody),
     });
   },
   
-  getHistory: async (notebookId: string, sessionId?: string) => {
-    console.log("chatAPI.getHistory called with notebookId:", notebookId, "sessionId:", sessionId);
+  history: async (notebookId: string, sessionId?: string) => {
+    console.log("chatAPI.history called with notebookId:", notebookId, "sessionId:", sessionId);
     const params = new URLSearchParams({ notebook_id: notebookId });
     if (sessionId) params.append('session_id', sessionId);
     
     return await apiRequest(`/chat/history?${params.toString()}`);
+  },
+  
+  getContext: async (notebookId: string) => {
+    console.log("chatAPI.getContext called with notebookId:", notebookId);
+    const params = new URLSearchParams({ notebook_id: notebookId });
+    
+    return await apiRequest(`/chat/context?${params.toString()}`);
   },
 };
 
