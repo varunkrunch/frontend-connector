@@ -1176,7 +1176,6 @@ Output: [example output]`);
                                       e.stopPropagation();
                                       handleEditTransformation(transformation);
                                     }}
-                                    className="flex-1"
                                   >
                                     <Edit className="h-4 w-4 mr-2" />
                                     Edit
