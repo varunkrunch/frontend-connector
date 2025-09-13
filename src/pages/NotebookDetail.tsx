@@ -634,31 +634,6 @@ export default function NotebookDetail() {
     }
   };
 
-  const handleExport = () => {
-    toast({
-      title: "Export started",
-      description: "Your notebook is being exported...",
-    });
-  };
-
-  const handleDelete = async () => {
-    if (!notebook) return;
-    
-    try {
-      await notebookAPI.delete(notebook.id);
-      toast({
-        title: "Notebook deleted",
-        description: "The notebook has been deleted successfully.",
-      });
-      navigate("/");
-    } catch (error) {
-      toast({
-        title: "Deletion failed",
-        description: "Failed to delete notebook.",
-        variant: "destructive",
-      });
-    }
-  };
 
   // Add Source handlers
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -900,27 +875,6 @@ export default function NotebookDetail() {
               </div>
             </div>
             
-            {/* Desktop Actions */}
-            <div className="hidden sm:flex items-center gap-2 shrink-0">
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleExport}
-                className="text-xs lg:text-sm"
-              >
-                <Download className="h-3 w-3 lg:h-4 lg:w-4 mr-1 lg:mr-2" />
-                <span className="hidden lg:inline">Export</span>
-              </Button>
-              <Button 
-                variant="destructive" 
-                size="sm" 
-                onClick={handleDelete}
-                className="text-xs lg:text-sm"
-              >
-                <Trash2 className="h-3 w-3 lg:h-4 lg:w-4 mr-1 lg:mr-2" />
-                <span className="hidden lg:inline">Delete</span>
-              </Button>
-            </div>
 
             {/* Mobile Menu */}
             <div className="sm:hidden shrink-0">
@@ -942,28 +896,6 @@ export default function NotebookDetail() {
                         <X className="h-5 w-5" />
                       </Button>
                     </div>
-                    <Button 
-                      variant="outline" 
-                      className="justify-start gap-3"
-                      onClick={() => {
-                        handleExport();
-                        setIsMobileMenuOpen(false);
-                      }}
-                    >
-                      <Download className="h-4 w-4" />
-                      Export
-                    </Button>
-                    <Button 
-                      variant="destructive" 
-                      className="justify-start gap-3"
-                      onClick={() => {
-                        handleDelete();
-                        setIsMobileMenuOpen(false);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Delete
-                    </Button>
                   </div>
                 </SheetContent>
               </Sheet>
