@@ -1137,14 +1137,13 @@ Output: [example output]`);
                             </div>
 
                             {/* Action Buttons */}
-                            <div className="flex items-center gap-2 pt-4 border-t">
+                            <div className="flex items-center justify-end gap-2 pt-4 border-t">
                               {editingTransformation === transformation.id ? (
                                 <>
                                   <Button
                                     size="sm"
                                     onClick={() => handleSaveTransformation(transformation.id)}
                                     disabled={savingTransformation === transformation.id}
-                                    className="flex-1"
                                   >
                                     {savingTransformation === transformation.id ? (
                                       <>
