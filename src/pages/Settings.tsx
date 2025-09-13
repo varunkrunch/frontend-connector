@@ -14,6 +14,7 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { transformationsAPI, podcastsAPI } from "@/services/api";
 import type { Transformation, PodcastTemplate } from "@/types";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -43,6 +44,8 @@ export default function Settings() {
   const [editingTemplate, setEditingTemplate] = useState<string | null>(null);
   const [savingTemplateEdit, setSavingTemplateEdit] = useState<string | null>(null);
   const [deletingTemplate, setDeletingTemplate] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
   const [voice1, setVoice1] = useState("");
   const [voice2, setVoice2] = useState("");
   const [userInstructions, setUserInstructions] = useState("");
@@ -236,15 +239,18 @@ Output: [example output]`);
     }
   };
 
-  const handleDeleteTemplate = async (templateName: string) => {
-    if (!confirm(`Are you sure you want to delete the template "${templateName}"? This action cannot be undone.`)) {
-      return;
-    }
+  const openDeleteModal = (templateName: string) => {
+    setTemplateToDelete(templateName);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteTemplate = async () => {
+    if (!templateToDelete) return;
 
     try {
-      setDeletingTemplate(templateName);
+      setDeletingTemplate(templateToDelete);
       
-      await podcastsAPI.deleteTemplate(templateName);
+      await podcastsAPI.deleteTemplate(templateToDelete);
       
       toast({
         title: "Success",
@@ -264,6 +270,8 @@ Output: [example output]`);
       });
     } finally {
       setDeletingTemplate(null);
+      setShowDeleteModal(false);
+      setTemplateToDelete(null);
     }
   };
 
@@ -1822,7 +1830,7 @@ Output: [example output]`);
                                      size="sm"
                                      onClick={(e) => {
                                        e.stopPropagation();
-                                       handleDeleteTemplate(template.name);
+                                       openDeleteModal(template.name);
                                      }}
                                      disabled={deletingTemplate === template.name}
                                    >
@@ -1848,6 +1856,45 @@ Output: [example output]`);
 
         </Tabs>
       </div>
+
+      {/* Delete Template Confirmation Modal */}
+      <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Template</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to delete the template "{templateToDelete}"? This action cannot be undone.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDeleteModal(false);
+                setTemplateToDelete(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteTemplate}
+              disabled={deletingTemplate !== null}
+            >
+              {deletingTemplate ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
