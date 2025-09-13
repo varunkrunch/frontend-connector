@@ -8,10 +8,15 @@ import { Plus, BookOpen, FileText, Mic, MoreVertical, Settings, User, Loader2, C
 import type { Notebook } from "@/types";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 const Index = () => {
   const [notebooks, setNotebooks] = useState<Notebook[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [renameTitle, setRenameTitle] = useState("");
+  const [notebookToRename, setNotebookToRename] = useState<Notebook | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -60,6 +65,43 @@ const Index = () => {
   const handleOpenNotebook = (notebook: Notebook) => {
     console.log("Opening notebook:", notebook);
     navigate(`/notebook/${notebook.id}`, { state: { notebook } });
+  };
+
+  const handleRenameNotebook = async () => {
+    if (!notebookToRename || !renameTitle.trim()) return;
+
+    try {
+      await notebookAPI.updateByName(notebookToRename.name, { name: renameTitle.trim() });
+      
+      // Update the local state
+      setNotebooks(notebooks.map(n => 
+        n.id === notebookToRename.id 
+          ? { ...n, name: renameTitle.trim() }
+          : n
+      ));
+      
+      toast({
+        title: "Notebook renamed",
+        description: `Notebook renamed to "${renameTitle.trim()}".`,
+      });
+      
+      setRenameTitle("");
+      setNotebookToRename(null);
+      setShowRenameModal(false);
+    } catch (error) {
+      console.error("Error renaming notebook:", error);
+      toast({
+        title: "Rename failed",
+        description: "Failed to rename notebook. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const openRenameModal = (notebook: Notebook) => {
+    setNotebookToRename(notebook);
+    setRenameTitle(notebook.name);
+    setShowRenameModal(true);
   };
 
   const getNotebookIcon = (index: number) => {
@@ -207,7 +249,9 @@ const Index = () => {
                       <DropdownMenuItem onClick={() => handleOpenNotebook(notebook)}>
                         Open
                       </DropdownMenuItem>
-                      <DropdownMenuItem>Rename</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => openRenameModal(notebook)}>
+                        Rename
+                      </DropdownMenuItem>
                       <DropdownMenuItem>Duplicate</DropdownMenuItem>
                       <DropdownMenuItem 
                         className="text-destructive"
@@ -247,6 +291,46 @@ const Index = () => {
           </div>
         )}
       </main>
+
+      {/* Rename Notebook Dialog */}
+      <Dialog open={showRenameModal} onOpenChange={setShowRenameModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename {notebookToRename?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Input
+              placeholder="Enter new notebook name"
+              value={renameTitle}
+              onChange={(e) => setRenameTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleRenameNotebook();
+                }
+              }}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowRenameModal(false);
+                setRenameTitle("");
+                setNotebookToRename(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRenameNotebook}
+              disabled={!renameTitle.trim()}
+            >
+              Rename
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

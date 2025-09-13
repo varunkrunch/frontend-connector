@@ -116,6 +116,14 @@ export const notebookAPI = {
       method: 'POST',
     });
   },
+  
+  updateByName: async (name: string, data: Partial<Notebook>) => {
+    console.log("notebookAPI.updateByName called with name:", name, "data:", data);
+    return await apiRequest(`/notebooks/by-name/${encodeURIComponent(name)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
 };
 
 // Notes API
