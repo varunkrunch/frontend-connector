@@ -39,9 +39,9 @@ import {
   X,
   Loader2
 } from "lucide-react";
-import { sourcesAPI, notesAPI, serperAPI } from "@/services/api";
+import { sourcesAPI, notesAPI, serperAPI, transformationsAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
-import type { Source } from "@/types";
+import type { Source, Transformation } from "@/types";
 import { cn } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
@@ -85,6 +85,8 @@ export function SourcesPanel({ notebookId, notebookName }: SourcesPanelProps) {
   const [sourceToRename, setSourceToRename] = useState<Source | null>(null);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [transformations, setTransformations] = useState<Transformation[]>([]);
+  const [loadingTransformations, setLoadingTransformations] = useState(false);
   const { toast } = useToast();
 
   // Debug modal state
@@ -124,6 +126,25 @@ export function SourcesPanel({ notebookId, notebookName }: SourcesPanelProps) {
     }
   };
 
+  const loadTransformations = useCallback(async () => {
+    try {
+      console.log("🔄 SourcesPanel: Loading transformations...");
+      setLoadingTransformations(true);
+      const data = await transformationsAPI.list('name', 'asc');
+      console.log("📊 SourcesPanel: Received transformations:", data);
+      setTransformations(data || []);
+    } catch (error) {
+      console.error("❌ SourcesPanel: Error loading transformations:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load transformations",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingTransformations(false);
+    }
+  }, [toast]);
+
   const loadSourceInsights = useCallback(async (source: Source) => {
     try {
       console.log("🔍 SourcesPanel: Loading insights for source:", source.title);
@@ -150,7 +171,8 @@ export function SourcesPanel({ notebookId, notebookName }: SourcesPanelProps) {
 
   useEffect(() => {
     loadSources();
-  }, [notebookId, notebookName]);
+    loadTransformations();
+  }, [notebookId, notebookName, loadSources, loadTransformations]);
 
   const getSourceIcon = (type: string) => {
     switch (type) {
@@ -577,17 +599,16 @@ export function SourcesPanel({ notebookId, notebookName }: SourcesPanelProps) {
             </div>
             {/* Transformation Controls */}
             <div className="flex items-center gap-2">
-              <Select value={transformation} onValueChange={setTransformation}>
+              <Select value={transformation} onValueChange={setTransformation} disabled={loadingTransformations}>
                 <SelectTrigger className="flex-1 sm:w-[140px] lg:w-[180px] h-8 sm:h-9 text-xs sm:text-sm">
-                  <SelectValue placeholder="Apply transformation" />
+                  <SelectValue placeholder={loadingTransformations ? "Loading..." : "Apply transformation"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Analyze Paper">Analyze Paper</SelectItem>
-                  <SelectItem value="Dense Summary">Dense Summary</SelectItem>
-                  <SelectItem value="Key Insights">Key Insights</SelectItem>
-                  <SelectItem value="Reflections">Reflections</SelectItem>
-                  <SelectItem value="Simple Summary">Simple Summary</SelectItem>
-                  <SelectItem value="Table of Contents">Table of Contents</SelectItem>
+                  {transformations.map((t) => (
+                    <SelectItem key={t.id} value={t.name}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <Button
@@ -1031,17 +1052,17 @@ export function SourcesPanel({ notebookId, notebookName }: SourcesPanelProps) {
   return (
     <>
       {addingSource && <LoadingOverlay />}
-      <div className="h-full flex flex-col bg-background">
+      <div className="h-full flex flex-col bg-background animate-content-fade-in">
       {/* Header */}
-      <div className="p-3 sm:p-4 border-b bg-muted/30">
+      <div className="p-3 sm:p-4 border-b bg-muted/30 animate-slide-in-top">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-lg sm:text-xl font-semibold">Sources</h2>
+          <h2 className="text-lg sm:text-xl font-semibold animate-fade-in-scale">Sources</h2>
           <div className="flex gap-2">
             <Button 
               onClick={() => setShowAddForm(true)}
               size="sm"
               variant="outline"
-              className="h-8 sm:h-9 text-xs sm:text-sm"
+              className="h-8 sm:h-9 text-xs sm:text-sm transition-all duration-300 hover:scale-105 active:scale-95 hover:shadow-md animate-bounce-in"
             >
               <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
               Add
@@ -1050,7 +1071,7 @@ export function SourcesPanel({ notebookId, notebookName }: SourcesPanelProps) {
               onClick={() => setShowDiscoverForm(true)}
               size="sm"
               variant="outline"
-              className="h-8 sm:h-9 text-xs sm:text-sm"
+              className="h-8 sm:h-9 text-xs sm:text-sm transition-all duration-300 hover:scale-105 active:scale-95 hover:shadow-md animate-bounce-in"
             >
               Discover
             </Button>
@@ -1092,10 +1113,14 @@ export function SourcesPanel({ notebookId, notebookName }: SourcesPanelProps) {
             </div>
           ) : (
             <div className="grid gap-1">
-              {filteredSources.map((source) => (
+              {filteredSources.map((source, index) => (
                   <Card 
                     key={source.id} 
-                    className="group hover:bg-accent/50 transition-colors cursor-pointer relative"
+                    className={cn(
+                      "group hover:bg-accent/50 transition-all duration-300 cursor-pointer relative hover:scale-[1.02] hover:shadow-md",
+                      "animate-stagger-in",
+                      `animate-stagger-${Math.min(index + 1, 6)}`
+                    )}
                     onClick={() => handleSourceSelect(source)}
                   >
                   <CardContent className="p-2">

@@ -1,4 +1,4 @@
-# Frontend Connector - NotebookLM Clone
+# Frontend Connector - NerdNest
 
 A modern, responsive web application for organizing sources, notes, and ideas in notebooks with AI-powered chat assistance.
 

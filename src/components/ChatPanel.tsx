@@ -152,17 +152,17 @@ export function ChatPanel({ notebookId, onNoteSaved }: ChatPanelProps) {
 
   return (
     <>
-      <div className="h-full flex flex-col overflow-hidden pb-20 rounded-xl">
+      <div className="h-full flex flex-col overflow-hidden pb-20 rounded-xl animate-content-fade-in">
       {/* Chat Header */}
-      <div className="p-3 sm:p-4 border-b border-border bg-card/80 backdrop-blur-sm rounded-t-xl">
+      <div className="p-3 sm:p-4 border-b border-border bg-card/80 backdrop-blur-sm rounded-t-xl animate-slide-in-top">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-3">
-            <div className="p-1.5 sm:p-2 bg-gradient-to-br from-primary to-primary/70 rounded-xl">
+            <div className="p-1.5 sm:p-2 bg-gradient-to-br from-primary to-primary/70 rounded-xl animate-glow">
               <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-primary-foreground" />
             </div>
-            <div>
-              <h3 className="text-sm sm:text-base font-semibold">AI Assistant</h3>
-              <p className="text-xs text-muted-foreground hidden sm:block">
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm sm:text-base font-semibold animate-fade-in-scale truncate">AI Assistant</h3>
+              <p className="text-xs text-muted-foreground hidden sm:block animate-fade-in-scale truncate">
                 Ask questions about your notebook content
               </p>
             </div>
@@ -176,38 +176,38 @@ export function ChatPanel({ notebookId, onNoteSaved }: ChatPanelProps) {
         <div className="p-4 sm:p-6 border-b border-border bg-muted/20">
           <div className="max-w-4xl mx-auto text-center">
             <Sparkles className="h-8 w-8 sm:h-10 sm:w-10 mx-auto mb-3 sm:mb-4 text-primary" />
-            <h3 className="text-base sm:text-lg font-semibold mb-2">Start a conversation</h3>
-            <p className="text-sm sm:text-base text-muted-foreground mb-4 sm:mb-6">
+            <h3 className="text-base sm:text-lg font-semibold mb-2 break-words">Start a conversation</h3>
+            <p className="text-sm sm:text-base text-muted-foreground mb-4 sm:mb-6 break-words">
               Ask questions about your sources, get summaries, or explore insights
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-2xl mx-auto">
               <Button
                 variant="outline"
-                className="justify-start text-xs sm:text-sm h-auto py-2 px-3 transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
+                className="justify-start text-xs sm:text-sm h-auto py-2 px-3 transition-all duration-300 hover:scale-105 hover:shadow-md active:scale-95 animate-bounce-in animate-stagger-1 break-words overflow-hidden"
                 onClick={() => setInput("Summarize all my sources")}
               >
-                Summarize all my sources
+                <span className="truncate">Summarize all my sources</span>
               </Button>
               <Button
                 variant="outline"
-                className="justify-start text-xs sm:text-sm h-auto py-2 px-3 transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
+                className="justify-start text-xs sm:text-sm h-auto py-2 px-3 transition-all duration-300 hover:scale-105 hover:shadow-md active:scale-95 animate-bounce-in animate-stagger-2 break-words overflow-hidden"
                 onClick={() => setInput("What are the key insights?")}
               >
-                What are the key insights?
+                <span className="truncate">What are the key insights?</span>
               </Button>
               <Button
                 variant="outline"
-                className="justify-start text-xs sm:text-sm h-auto py-2 px-3 transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
+                className="justify-start text-xs sm:text-sm h-auto py-2 px-3 transition-all duration-300 hover:scale-105 hover:shadow-md active:scale-95 animate-bounce-in animate-stagger-3 break-words overflow-hidden"
                 onClick={() => setInput("Generate study questions")}
               >
-                Generate study questions
+                <span className="truncate">Generate study questions</span>
               </Button>
               <Button
                 variant="outline"
-                className="justify-start text-xs sm:text-sm h-auto py-2 px-3 transition-all duration-200 hover:scale-105 hover:shadow-md active:scale-95"
+                className="justify-start text-xs sm:text-sm h-auto py-2 px-3 transition-all duration-300 hover:scale-105 hover:shadow-md active:scale-95 animate-bounce-in animate-stagger-4 break-words overflow-hidden"
                 onClick={() => setInput("Create an outline")}
               >
-                Create an outline
+                <span className="truncate">Create an outline</span>
               </Button>
             </div>
           </div>
@@ -234,13 +234,13 @@ export function ChatPanel({ notebookId, onNoteSaved }: ChatPanelProps) {
                 )}
                 
                 <div
-                  className={`max-w-[85%] sm:max-w-[70%] ${
+                  className={`max-w-[85%] sm:max-w-[70%] min-w-0 ${
                     message.role === "user"
                       ? "bg-primary text-primary-foreground"
                       : "bg-card border border-border"
                   } rounded-xl p-3 sm:p-4 transition-all duration-300 ease-out hover:shadow-md animate-in slide-in-from-bottom-2 fade-in-0`}
                 >
-                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                  <p className="text-sm whitespace-pre-wrap leading-relaxed break-words overflow-hidden">{message.content}</p>
                   
                   {message.role === "assistant" && (
                     <div className="flex justify-end mt-2">
@@ -300,7 +300,7 @@ export function ChatPanel({ notebookId, onNoteSaved }: ChatPanelProps) {
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
             disabled={loading}
-            className="flex-1 text-sm sm:text-base bg-background/50 backdrop-blur-sm transition-all duration-200 focus:ring-2 focus:ring-primary/20 focus:border-primary/50 rounded-xl"
+            className="flex-1 text-sm sm:text-base bg-background/50 backdrop-blur-sm transition-all duration-200 focus:ring-2 focus:ring-primary/20 focus:border-primary/50 rounded-xl min-w-0 break-words"
           />
           <Button 
             onClick={handleSendMessage} 

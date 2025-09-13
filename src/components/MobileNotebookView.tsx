@@ -10,7 +10,7 @@ import {
   ChevronLeft, Plus, Play, Upload, Link, Type, 
   Sparkles, FileText, Trash2, X, AudioLines 
 } from "lucide-react";
-import type { Source, Note } from "@/types";
+import type { Source, Note, Transformation } from "@/types";
 
 interface MobileNotebookViewProps {
   activeTab: string;
@@ -34,6 +34,8 @@ interface MobileNotebookViewProps {
   selectedTransformation: string;
   setSelectedTransformation: (transformation: string) => void;
   transformationResults: Record<string, string>;
+  transformations: Transformation[];
+  loadingTransformations: boolean;
   handleSourceSelect: (source: Source) => void;
   handleAddSourceClick: () => void;
   handleDiscoverClick: () => void;
@@ -116,14 +118,14 @@ export function MobileNotebookView({
   notebookId
 }: MobileNotebookViewProps) {
   return (
-    <div className="md:hidden h-[calc(100vh-89px)] sm:h-[calc(100vh-107px)]">
+    <div className="md:hidden h-[calc(100vh-89px)] sm:h-[calc(100vh-107px)] animate-content-fade-in">
       <Tabs value={activeTab} className="h-full">
         {/* Sources Tab */}
-        <TabsContent value="sources" className="h-full mt-0 p-0">
+        <TabsContent value="sources" className="h-full mt-0 p-0 animate-tab-switch">
           {isSourceExpanded ? (
-            <div className="h-full flex flex-col bg-card">
+            <div className="h-full flex flex-col bg-card animate-panel-slide-in">
               {/* Expanded Header */}
-              <div className="sticky top-0 z-10 p-3 border-b flex items-center justify-between bg-background/95 backdrop-blur">
+              <div className="sticky top-0 z-10 p-3 border-b flex items-center justify-between bg-background/95 backdrop-blur animate-slide-in-top">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   <Button
                     size="sm"
@@ -275,17 +277,16 @@ export function MobileNotebookView({
                   {selectedSource && !showAddSourceForm && !showDiscoverForm && (
                     <div className="space-y-4">
                       <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-lg">
-                        <Select value={selectedTransformation} onValueChange={setSelectedTransformation}>
+                        <Select value={selectedTransformation} onValueChange={setSelectedTransformation} disabled={loadingTransformations}>
                           <SelectTrigger className="flex-1 h-9">
-                            <SelectValue placeholder="Apply transformation" />
+                            <SelectValue placeholder={loadingTransformations ? "Loading..." : "Apply transformation"} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Analyze Paper">Analyze Paper</SelectItem>
-                            <SelectItem value="Dense Summary">Dense Summary</SelectItem>
-                            <SelectItem value="Key Insights">Key Insights</SelectItem>
-                            <SelectItem value="Reflections">Reflections</SelectItem>
-                            <SelectItem value="Simple Summary">Simple Summary</SelectItem>
-                            <SelectItem value="Table of Contents">Table of Contents</SelectItem>
+                            {transformations.map((t) => (
+                              <SelectItem key={t.id} value={t.name}>
+                                {t.name}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <Button 
@@ -354,10 +355,14 @@ export function MobileNotebookView({
                 />
                 <div className="space-y-2">
                   {sources.length > 0 ? (
-                    sources.map((source) => (
+                    sources.map((source, index) => (
                       <Card
                         key={source.id}
-                        className="p-3 cursor-pointer hover:bg-accent/50 transition-colors"
+                        className={cn(
+                          "p-3 cursor-pointer hover:bg-accent/50 transition-all duration-300 hover:scale-[1.02] hover:shadow-md",
+                          "animate-stagger-in",
+                          `animate-stagger-${Math.min(index + 1, 6)}`
+                        )}
                         onClick={() => handleSourceSelect(source)}
                       >
                         <div className="flex items-center gap-2 mb-1">
@@ -390,12 +395,12 @@ export function MobileNotebookView({
         </TabsContent>
 
         {/* Chat Tab */}
-        <TabsContent value="chat" className="h-full mt-0 p-0">
+        <TabsContent value="chat" className="h-full mt-0 p-0 animate-tab-switch">
           <ChatPanel notebookId={notebookId} />
         </TabsContent>
 
         {/* Studio Tab */}
-        <TabsContent value="studio" className="h-full mt-0 p-0">
+        <TabsContent value="studio" className="h-full mt-0 p-0 animate-tab-switch">
           <div className="h-full overflow-y-auto bg-background">
             <div className="p-3 sm:p-4 space-y-3">
               <div className="flex justify-between items-center">
@@ -406,7 +411,7 @@ export function MobileNotebookView({
                       size="sm" 
                       variant="outline" 
                       onClick={() => setIsCreatingNote(true)}
-                      className="h-8 px-3"
+                      className="h-8 px-3 transition-all duration-300 hover:scale-105 active:scale-95 hover:shadow-md active:shadow-sm touch-manipulation touch-target"
                     >
                       <Plus className="h-3.5 w-3.5 mr-1" />
                       Note
@@ -415,7 +420,7 @@ export function MobileNotebookView({
                       size="sm" 
                       variant="outline" 
                       onClick={() => setShowPodcastForm(true)}
-                      className="h-8 px-3"
+                      className="h-8 px-3 transition-all duration-300 hover:scale-105 active:scale-95 hover:shadow-md active:shadow-sm touch-manipulation touch-target"
                     >
                       <AudioLines className="h-3.5 w-3.5 mr-1" />
                       Podcast
@@ -428,17 +433,27 @@ export function MobileNotebookView({
               {!isCreatingNote && !showPodcastForm && (
                 <div className="space-y-2">
                   {notes.length > 0 ? (
-                    notes.map((note) => (
+                    notes.map((note, index) => (
                       <Card
                         key={note.id}
-                        className="p-3"
+                        className={cn(
+                          "p-3 transition-all duration-300 touch-manipulation",
+                          "hover:scale-[1.02] hover:shadow-md active:scale-95 active:shadow-sm",
+                          "animate-stagger-in",
+                          `animate-stagger-${Math.min(index + 1, 6)}`
+                        )}
                       >
                         <div className="flex justify-between items-start">
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-medium text-sm truncate">{note.title}</h3>
-                            <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
-                              {note.content}
-                            </p>
+                          <div className="flex items-start gap-2 flex-1 min-w-0">
+                            <div className="flex-shrink-0 mt-0.5">
+                              <FileText className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-medium text-sm truncate">{note.title}</h3>
+                              <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                                {note.content}
+                              </p>
+                            </div>
                           </div>
                           <div className="flex gap-1 ml-2">
                             <Button

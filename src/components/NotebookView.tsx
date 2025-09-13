@@ -30,6 +30,11 @@ interface NotebookViewProps {
 
 export function NotebookView({ notebook }: NotebookViewProps) {
   const [activeTab, setActiveTab] = useState("sources");
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const handleNoteSaved = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
 
   if (!notebook) {
     return (
@@ -38,7 +43,7 @@ export function NotebookView({ notebook }: NotebookViewProps) {
           <div className="w-16 h-16 md:w-20 md:h-20 mx-auto bg-gradient-to-br from-primary to-primary/70 rounded-2xl flex items-center justify-center shadow-lg">
             <Sparkles className="h-8 w-8 md:h-10 md:w-10 text-primary-foreground" />
           </div>
-          <h2 className="text-xl md:text-2xl font-semibold">Welcome to NotebookLM</h2>
+          <h2 className="text-2xl md:text-3xl font-black tracking-tight">Welcome to NerdNest</h2>
           <p className="text-sm md:text-base text-muted-foreground px-4">
             Select a notebook from the sidebar or create a new one to get started.
             Upload sources, take notes, generate podcasts, and chat with your knowledge base.
@@ -115,19 +120,18 @@ export function NotebookView({ notebook }: NotebookViewProps) {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto animate-content-fade-in">
         <Tabs value={activeTab} className="h-full">
-          <TabsContent value="sources" className="h-full m-0">
-            {console.log("🔍 NotebookView: Passing to SourcesPanel - notebookId:", notebook.id, "notebookName:", notebook.name)}
+          <TabsContent value="sources" className="h-full m-0 animate-tab-switch">
             <SourcesPanel notebookId={notebook.id} notebookName={notebook.name} />
           </TabsContent>
-          <TabsContent value="notes" className="h-full m-0">
-            <NotesPanel notebookId={notebook.id} />
+          <TabsContent value="notes" className="h-full m-0 animate-tab-switch">
+            <NotesPanel notebookId={notebook.id} key={refreshTrigger} />
           </TabsContent>
-          <TabsContent value="chat" className="h-full m-0">
-            <ChatPanel notebookId={notebook.id} />
+          <TabsContent value="chat" className="h-full m-0 animate-tab-switch">
+            <ChatPanel notebookId={notebook.id} onNoteSaved={handleNoteSaved} />
           </TabsContent>
-          <TabsContent value="podcasts" className="h-full m-0">
+          <TabsContent value="podcasts" className="h-full m-0 animate-tab-switch">
             <PodcastPanel notebookId={notebook.id} />
           </TabsContent>
         </Tabs>

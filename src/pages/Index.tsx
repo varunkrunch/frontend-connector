@@ -88,8 +88,8 @@ const Index = () => {
               <div className="p-1 sm:p-1.5 lg:p-2 bg-primary/10 rounded-xl shrink-0 transition-all duration-300 hover:scale-110 hover:bg-primary/20 hover:shadow-md">
                 <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-primary" />
               </div>
-              <h1 className="text-lg sm:text-xl lg:text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent truncate">
-                NotebookLM
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent truncate">
+                NerdNest
               </h1>
             </div>
             
@@ -121,7 +121,7 @@ const Index = () => {
                       <div className="p-2 bg-primary/10 rounded-xl">
                         <BookOpen className="h-6 w-6 text-primary" />
                       </div>
-                      <h2 className="text-lg font-semibold">NotebookLM</h2>
+                      <h2 className="text-2xl font-black tracking-tight">NerdNest</h2>
                     </div>
                     <Button 
                       variant="ghost" 

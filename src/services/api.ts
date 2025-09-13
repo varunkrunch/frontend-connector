@@ -336,6 +336,11 @@ export const podcastsAPI = {
     // Always use the episodes endpoint since the backend doesn't have notebook-specific podcast endpoints
     return await apiRequest('/podcasts/episodes');
   },
+
+  listByNotebookName: async (notebookName: string) => {
+    console.log("podcastsAPI.listByNotebookName called with notebookName:", notebookName);
+    return await apiRequest(`/podcasts/episodes/by-notebook/${encodeURIComponent(notebookName)}`);
+  },
   
   generate: async (data: { 
     template_name: string; 
@@ -371,6 +376,117 @@ export const podcastsAPI = {
   getTemplates: async () => {
     console.log("podcastsAPI.getTemplates called");
     return await apiRequest('/podcasts/templates');
+  },
+
+  createTemplate: async (data: {
+    name: string;
+    podcast_name: string;
+    podcast_tagline: string;
+    output_language: string;
+    person1_role: string[];
+    person2_role: string[];
+    conversation_style: string[];
+    engagement_technique: string[];
+    dialogue_structure: string[];
+    transcript_model?: string;
+    transcript_model_provider?: string;
+    user_instructions?: string;
+    ending_message?: string;
+    creativity: number;
+    provider: string;
+    voice1: string;
+    voice2: string;
+    model: string;
+  }) => {
+    console.log("podcastsAPI.createTemplate called with:", data);
+    
+    // Convert arrays to comma-separated strings for form data
+    const formData = new FormData();
+    formData.append('name', data.name);
+    formData.append('podcast_name', data.podcast_name);
+    formData.append('podcast_tagline', data.podcast_tagline);
+    formData.append('output_language', data.output_language);
+    formData.append('person1_role', data.person1_role.join(','));
+    formData.append('person2_role', data.person2_role.join(','));
+    formData.append('conversation_style', data.conversation_style.join(','));
+    formData.append('engagement_technique', data.engagement_technique.join(','));
+    formData.append('dialogue_structure', data.dialogue_structure.join(','));
+    if (data.transcript_model) formData.append('transcript_model', data.transcript_model);
+    if (data.transcript_model_provider) formData.append('transcript_model_provider', data.transcript_model_provider);
+    if (data.user_instructions) formData.append('user_instructions', data.user_instructions);
+    if (data.ending_message) formData.append('ending_message', data.ending_message);
+    formData.append('creativity', data.creativity.toString());
+    formData.append('provider', data.provider);
+    formData.append('voice1', data.voice1);
+    formData.append('voice2', data.voice2);
+    formData.append('model', data.model);
+
+    return await apiRequest('/podcasts/templates', {
+      method: 'POST',
+      body: formData,
+      headers: {}, // Don't set Content-Type, let browser set it for FormData
+    });
+  },
+
+  updateTemplate: async (templateIdentifier: string, data: {
+    name?: string;
+    podcast_name?: string;
+    podcast_tagline?: string;
+    output_language?: string;
+    person1_role?: string[];
+    person2_role?: string[];
+    conversation_style?: string[];
+    engagement_technique?: string[];
+    dialogue_structure?: string[];
+    transcript_model?: string;
+    transcript_model_provider?: string;
+    user_instructions?: string;
+    ending_message?: string;
+    creativity?: number;
+    provider?: string;
+    voice1?: string;
+    voice2?: string;
+    model?: string;
+  }) => {
+    console.log("podcastsAPI.updateTemplate called with:", templateIdentifier, data);
+    
+    // Convert arrays to comma-separated strings for form data
+    const formData = new FormData();
+    
+    // Required fields - always send these
+    formData.append('name', data.name || '');
+    formData.append('podcast_name', data.podcast_name || '');
+    formData.append('podcast_tagline', data.podcast_tagline || '');
+    formData.append('output_language', data.output_language || 'English');
+    formData.append('person1_role', (data.person1_role || []).join(','));
+    formData.append('person2_role', (data.person2_role || []).join(','));
+    formData.append('conversation_style', (data.conversation_style || []).join(','));
+    formData.append('engagement_technique', (data.engagement_technique || []).join(','));
+    formData.append('dialogue_structure', (data.dialogue_structure || []).join(','));
+    formData.append('creativity', (data.creativity || 0.5).toString());
+    formData.append('provider', data.provider || 'openai');
+    formData.append('voice1', data.voice1 || '');
+    formData.append('voice2', data.voice2 || '');
+    formData.append('model', data.model || 'tts-1');
+    
+    // Optional fields - only send if they have values
+    if (data.transcript_model) formData.append('transcript_model', data.transcript_model);
+    if (data.transcript_model_provider) formData.append('transcript_model_provider', data.transcript_model_provider);
+    if (data.user_instructions) formData.append('user_instructions', data.user_instructions);
+    if (data.ending_message) formData.append('ending_message', data.ending_message);
+
+    return await apiRequest(`/podcasts/templates/${encodeURIComponent(templateIdentifier)}`, {
+      method: 'PUT',
+      body: formData,
+      headers: {}, // Don't set Content-Type, let browser set it for FormData
+    });
+  },
+
+  deleteTemplate: async (templateIdentifier: string) => {
+    console.log("podcastsAPI.deleteTemplate called with:", templateIdentifier);
+    return await apiRequest(`/podcasts/templates/${encodeURIComponent(templateIdentifier)}`, {
+      method: 'DELETE',
+    });
   },
 
   getModels: async () => {
@@ -410,9 +526,43 @@ export const modelsAPI = {
 
 // Transformations API
 export const transformationsAPI = {
-  list: async () => {
-    console.log("transformationsAPI.list called");
-    return await apiRequest('/transformations');
+  list: async (sortBy?: string, order?: string) => {
+    console.log("transformationsAPI.list called with sortBy:", sortBy, "order:", order);
+    const params = new URLSearchParams();
+    if (sortBy) params.append('sort_by', sortBy);
+    if (order) params.append('order', order);
+    
+    const queryString = params.toString();
+    const endpoint = queryString ? `/transformations?${queryString}` : '/transformations';
+    return await apiRequest(endpoint);
+  },
+  
+  get: async (id: string) => {
+    console.log("transformationsAPI.get called with id:", id);
+    return await apiRequest(`/transformations/${encodeURIComponent(id)}`);
+  },
+  
+  create: async (data: { name: string; title: string; description: string; prompt: string; apply_default?: boolean }) => {
+    console.log("transformationsAPI.create called with:", data);
+    return await apiRequest('/transformations', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+  
+  update: async (id: string, data: { name?: string; title?: string; description?: string; prompt?: string; apply_default?: boolean }) => {
+    console.log("transformationsAPI.update called with id:", id, "data:", data);
+    return await apiRequest(`/transformations/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+  
+  delete: async (id: string) => {
+    console.log("transformationsAPI.delete called with id:", id);
+    return await apiRequest(`/transformations/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
   },
   
   transform: async (data: { text: string; transformation_type: string }) => {

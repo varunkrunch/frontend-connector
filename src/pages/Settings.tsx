@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,11 +9,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Info, Save, Mic, Settings as SettingsIcon, Leaf, Plus, MoreHorizontal } from "lucide-react";
+import { ArrowLeft, Info, Save, Mic, Settings as SettingsIcon, Leaf, Plus, MoreHorizontal, Loader2, Edit, Trash2, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
+import { transformationsAPI, podcastsAPI } from "@/services/api";
+import type { Transformation, PodcastTemplate } from "@/types";
 
 export default function Settings() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   
   // Podcast Template Form State
   const [templateName, setTemplateName] = useState("");
@@ -31,8 +35,17 @@ export default function Settings() {
   const [transcriptModel, setTranscriptModel] = useState("gpt-4o-mini");
   const [audioModelProvider, setAudioModelProvider] = useState("openai");
   const [audioModel, setAudioModel] = useState("tts-1");
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [existingTemplates, setExistingTemplates] = useState<PodcastTemplate[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const [showNewTemplateForm, setShowNewTemplateForm] = useState(false);
+  const [expandedTemplate, setExpandedTemplate] = useState<string | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<string | null>(null);
+  const [savingTemplateEdit, setSavingTemplateEdit] = useState<string | null>(null);
+  const [deletingTemplate, setDeletingTemplate] = useState<string | null>(null);
   const [voice1, setVoice1] = useState("");
   const [voice2, setVoice2] = useState("");
+  const [userInstructions, setUserInstructions] = useState("");
 
   // Transformations State
   const [transformationType, setTransformationType] = useState("Prompt");
@@ -50,7 +63,7 @@ Output: [example output]`);
   const [selectedTransformation, setSelectedTransformation] = useState("Analyze Paper");
   const [transformationDescription, setTransformationDescription] = useState("");
   const [transformationPrompt, setTransformationPrompt] = useState("");
-  const [expandedTransformation, setExpandedTransformation] = useState<string | null>("Analyze Paper");
+  const [expandedTransformation, setExpandedTransformation] = useState<string | null>(null);
   const [transformationName, setTransformationName] = useState("Analyze Paper");
   const [cardTitle, setCardTitle] = useState("Analyze Paper");
   const [showNewTransformationForm, setShowNewTransformationForm] = useState(false);
@@ -64,6 +77,27 @@ Output: [example output]`);
     description: string;
     prompt: string;
   }>>([]);
+  
+  // Transformations from API
+  const [transformations, setTransformations] = useState<Transformation[]>([]);
+  const [loadingTransformations, setLoadingTransformations] = useState(true);
+  const [errorTransformations, setErrorTransformations] = useState<string | null>(null);
+  
+  // Editing state for transformations
+  const [editingTransformation, setEditingTransformation] = useState<string | null>(null);
+  const [editFormData, setEditFormData] = useState<{
+    name: string;
+    title: string;
+    description: string;
+    prompt: string;
+  }>({
+    name: '',
+    title: '',
+    description: '',
+    prompt: ''
+  });
+  const [savingTransformation, setSavingTransformation] = useState<string | null>(null);
+  const [deletingTransformation, setDeletingTransformation] = useState<string | null>(null);
 
   // Role suggestions
   const roleSuggestions = [
@@ -140,177 +174,592 @@ Output: [example output]`);
     }
   };
 
-  // Transformations data
-  const transformations = [
-    {
-      name: "Analyze Paper",
-      description: "Analyses a technical/scientific paper",
-      prompt: `# IDENTITY and PURPOSE
-You are an insightful and analytical reader of academic papers, extracting the key components, significance, and broader implications. Your focus is to uncover the core contributions, practical applications, methodological strengths or weaknesses, and any surprising findings. You are especially attuned to the clarity of arguments, the relevance to existing literature, and potential impacts on both the specific field and broader contexts.
-
-# STEPS
-1. **READ AND UNDERSTAND THE PAPER**: Thoroughly read the paper, identifying its main focus, arguments, methods, results, and conclusions.
-2. **IDENTIFY CORE ELEMENTS**:
-   - **Purpose**: What is the main goal or research question?
-   - **Contribution**: What new knowledge or innovation does this paper bring to the field?
-   - **Methods**: What methods are used, and are they novel or particularly effective?
-   - **Key Findings**: What are the most critical results, and why do they matter?
-   - **Limitations**: Are there any notable limitations or areas for further research?
-3. **SYNTHESIZE THE MAIN POINTS**:
-   - Extract the key elements and organize them into insightful observations.
-   - Highlight the broader impact and potential applications.
-   - Note any aspects that challenge established views or introduce new questions.
-
-# OUTPUT INSTRUCTIONS
-- Structure the output as follows:
-  - **PURPOSE**: A concise summary of the main research question or goal (1-2 sentences).
-  - **CONTRIBUTION**: A bullet list of 2-3 points that describe what the paper adds to the field.
-  - **KEY FINDINGS**: A bullet list of 2-3 points summarizing the critical outcomes of the study.
-  - **IMPLICATIONS**: A bullet list of 2-3 points discussing the significance or potential impact of the findings on the field or broader context.
-  - **LIMITATIONS**: A bullet list of 1-2 points identifying notable limitations or areas for future work.
-- **Bullet Points** should be between 15-20 words.
-- Avoid starting each bullet point with the same word to maintain variety.
-- Use clear and concise language that conveys the key ideas effectively.
-- Do not include warnings, disclaimers, or personal opinions.
-- Output only the requested sections with their respective labels.`
-    },
-    {
-      name: "Dense Summary",
-      description: "Creates a rich, deep summary of the content",
-      prompt: `# MISSION
-You are a Sparse Priming Representation (SPR) writer. An SPR is a particular kind of use of language for advanced NLP, NLU, and NLG tasks, particularly useful for the latest generation of Large Language Models (LLMs). You will be given information by the USER which you are to render as an SPR.
-
-# THEORY
-LLMs are a kind of deep neural network. They have been demonstrated to embed knowledge, abilities, and concepts, ranging from reasoning to planning, and even to theory of mind. These are called latent abilities and latent content, collectively referred to as latent space. The latent space of an LLM can be activated with the correct series of words as inputs, which will create a useful internal state of the neural network. This is not unlike how the right shorthand cues can prime a human mind to think in a certain way. Like human minds, LLMs are associative, meaning you only need to use the correct associations to 'prime' another model to think in the same way.
-
-# METHODOLOGY
-Render the input as a distilled list of succinct statements, assertions, associations, concepts, analogies, and metaphors. The idea is to capture as much, conceptually, as possible but with as few words as possible. Write it in a way that makes sense to you, as the future audience will be another language model, not a human. Use complete sentences.`
-    },
-    {
-      name: "Key Insights",
-      description: "Extracts important insights and actionable items",
-      prompt: `# IDENTITY and PURPOSE
-You extract surprising, powerful, and interesting insights from text content. You are interested in insights related to the purpose and meaning of life, human flourishing, the role of technology in the future of humanity, artificial intelligence and its affect on humans, memes, learning, reading, books, continuous improvement, and similar topics. You create 15 word bullet points that capture the most important insights from the input. Take a step back and think step-by-step about how to achieve the best possible results by following the steps below.
-
-# STEPS
-- Extract 20 to 50 of the most surprising, insightful, and/or interesting ideas from the input in a section called IDEAS, and write them on a virtual whiteboard in your mind using 15 word bullets. If there are less than 50 then collect all of them. Make sure you extract at least 20.
-- From those IDEAS, extract the most powerful and insightful of them and write them in a section called INSIGHTS. Make sure you extract at least 10 and up to 25.
-
-# OUTPUT INSTRUCTIONS
-- INSIGHTS are essentially higher-level IDEAS that are more abstracted and wise.
-- Output the INSIGHTS section only.
-- Each bullet should be about 15 words in length.
-- Do not give warnings or notes; only output the requested sections.
-- You use bulleted lists for output, not numbered lists.
-- Do not start items with the same opening words.
-- Ensure you follow ALL these instructions when creating your output.`
-    },
-    {
-      name: "Reflections",
-      description: "Generates reflection questions from the document to help explore it further",
-      prompt: `# IDENTITY and PURPOSE
-You extract deep, thought-provoking, and meaningful reflections from text content. You are especially focused on themes related to the human experience, such as the purpose of life, personal growth, the intersection of technology and humanity, artificial intelligence's societal impact, human potential, collective evolution, and transformative learning. Your reflections aim to provoke new ways of thinking, challenge assumptions, and provide a thoughtful synthesis of the content.
-
-# STEPS
-- Extract 3 to 5 of the most profound, thought-provoking, and/or meaningful ideas from the input in a section called REFLECTIONS.
-- Each reflection should aim to explore underlying implications, connections to broader human experiences, or highlight a transformative perspective.
-- Take a step back and consider the deeper significance or questions that arise from the content.
-
-# OUTPUT INSTRUCTIONS
-- The output section should be labeled as REFLECTIONS.
-- Each bullet point should be between 20-25 words.
-- Avoid repetition in the phrasing and ensure variety in sentence structure.
-- The reflections should encourage deeper inquiry and provide a synthesis that transcends surface-level observations.
-- Use bullet points, not numbered lists.
-- Every bullet should be formatted as a question that elicits contemplation or a statement that offers a profound insight.
-- Do not give warnings or notes; only output the requested section.`
-    },
-    {
-      name: "Simple Summary",
-      description: "Generates a small summary of the content",
-      prompt: `# SYSTEM ROLE
-You are a content summarization assistant that creates dense, information-rich summaries optimized for machine understanding.
-
-Your summaries should capture key concepts with minimal words while maintaining complete, clear sentences.
-
-# TASK
-Analyze the provided content and create a summary that:
-- Captures the core concepts and key information
-- Uses clear, direct language
-- Maintains context from any previous summaries`
-    },
-    {
-      name: "Table of Contents",
-      description: "Describes the different topics of the document",
-      prompt: `# SYSTEM ROLE
-You are a content analysis assistant that reads through documents and provides a Table of Contents (ToC) to help users identify what the document covers more easily.
-
-Your ToC should capture all major topics and transitions in the content and should mention them in the order they appear.
-
-# TASK
-Analyze the provided content and create a Table of Contents:
-- Captures the core topics included in the text
-- Gives a small description of what is covered`
+  // Fetch existing templates
+  const fetchExistingTemplates = async () => {
+    setLoadingTemplates(true);
+    try {
+      console.log("Loading existing podcast templates...");
+      const templates = await podcastsAPI.getTemplates();
+      console.log("✅ Existing templates loaded:", templates);
+      setExistingTemplates(templates);
+    } catch (error) {
+      console.error("❌ Error loading existing templates:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load existing templates",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingTemplates(false);
     }
-  ];
-
-  const handleSave = () => {
-    // Save template logic here
-    console.log("Saving podcast template...");
   };
 
-  const handleSaveTransformation = () => {
-    // Save transformation logic here
-    console.log("Saving transformation...");
+  const handleCreateNewTemplate = () => {
+    setShowNewTemplateForm(true);
+    setExpandedTemplate(null); // Close any other expanded template
   };
+
+  const toggleTemplateExpansion = (templateName: string) => {
+    setExpandedTemplate(expandedTemplate === templateName ? null : templateName);
+    setShowNewTemplateForm(false); // Close create form if open
+  };
+
+  const handleEditTemplate = (templateName: string) => {
+    setEditingTemplate(templateName);
+    setExpandedTemplate(templateName);
+  };
+
+  const handleSaveTemplateEdit = async (templateName: string, updatedData: any) => {
+    try {
+      setSavingTemplateEdit(templateName);
+      
+      await podcastsAPI.updateTemplate(templateName, updatedData);
+      
+      toast({
+        title: "Success",
+        description: "Template updated successfully!",
+      });
+
+      // Refresh the templates list
+      await fetchExistingTemplates();
+      setEditingTemplate(null);
+
+    } catch (error) {
+      console.error("Error updating template:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update template. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingTemplateEdit(null);
+    }
+  };
+
+  const handleDeleteTemplate = async (templateName: string) => {
+    if (!confirm(`Are you sure you want to delete the template "${templateName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setDeletingTemplate(templateName);
+      
+      await podcastsAPI.deleteTemplate(templateName);
+      
+      toast({
+        title: "Success",
+        description: "Template deleted successfully!",
+      });
+
+      // Refresh the templates list
+      await fetchExistingTemplates();
+      setExpandedTemplate(null);
+
+    } catch (error) {
+      console.error("Error deleting template:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete template. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingTemplate(null);
+    }
+  };
+
+  // Fetch transformations from API
+  useEffect(() => {
+    const fetchTransformations = async () => {
+      try {
+        setLoadingTransformations(true);
+        setErrorTransformations(null);
+        const data = await transformationsAPI.list('name', 'asc');
+        console.log("Fetched transformations:", data);
+        setTransformations(data);
+      } catch (error) {
+        console.error("Error fetching transformations:", error);
+        setErrorTransformations(error instanceof Error ? error.message : 'Failed to fetch transformations');
+      } finally {
+        setLoadingTransformations(false);
+      }
+    };
+
+    fetchTransformations();
+    fetchExistingTemplates();
+  }, []);
+
+  const handleSave = async () => {
+    try {
+      setSavingTemplate(true);
+      
+      // Validate required fields
+      if (!templateName.trim()) {
+        toast({
+          title: "Error",
+          description: "Template name is required",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!podcastName.trim()) {
+        toast({
+          title: "Error", 
+          description: "Podcast name is required",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!voice1.trim() || !voice2.trim()) {
+        toast({
+          title: "Error",
+          description: "Both Voice 1 and Voice 2 are required",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const templateData = {
+        name: templateName.trim(),
+        podcast_name: podcastName.trim(),
+        podcast_tagline: podcastTagline.trim(),
+        output_language: language || "English",
+        person1_role: person1Roles,
+        person2_role: person2Roles,
+        conversation_style: conversationStyle,
+        engagement_technique: engagementTechniques,
+        dialogue_structure: dialogueStructure,
+        transcript_model: "gpt-4o-mini", // Default as requested
+        transcript_model_provider: "openai", // Default as requested
+        user_instructions: userInstructions, // Optional field
+        ending_message: endingMessage || "Thank you for listening!",
+        creativity: creativity[0],
+        provider: "openai", // Default as requested
+        voice1: voice1.trim(),
+        voice2: voice2.trim(),
+        model: "tts-1", // Default as requested
+      };
+
+      console.log("Creating podcast template:", templateData);
+      const response = await podcastsAPI.createTemplate(templateData);
+      
+      toast({
+        title: "Success",
+        description: "Podcast template created successfully!",
+      });
+
+      // Refresh the templates list
+      await fetchExistingTemplates();
+
+      // Close the form
+      setShowNewTemplateForm(false);
+
+      // Reset form
+      setTemplateName("");
+      setPodcastName("");
+      setPodcastTagline("");
+      setLanguage("");
+      setPerson1Roles([]);
+      setPerson2Roles([]);
+      setConversationStyle([]);
+      setEngagementTechniques([]);
+      setDialogueStructure([]);
+      setCreativity([0.0]);
+      setEndingMessage("Thank you for listening!");
+      setVoice1("");
+      setVoice2("");
+      setUserInstructions("");
+
+    } catch (error) {
+      console.error("Error creating podcast template:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create podcast template. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
 
   const handleCreateNewTransformation = () => {
     setShowNewTransformationForm(true);
     setExpandedTransformation(null); // Close any other expanded transformation
   };
 
-  const handleSaveNewTransformation = () => {
-    // Create new transformation with unique ID
-    const newTransformation = {
-      id: `user-${Date.now()}`,
+  const handleSaveNewTransformation = async () => {
+    try {
+      setLoadingTransformations(true);
+      
+      // Create transformation via API
+      const newTransformation = await transformationsAPI.create({
       name: newTransformationName,
+        title: newTransformationCardTitle,
       description: newTransformationDescription,
-      prompt: newTransformationPrompt
-    };
+        prompt: newTransformationPrompt,
+        apply_default: false
+      });
     
-    // Add to user transformations list
-    setUserTransformations(prev => [...prev, newTransformation]);
+      console.log("Successfully created transformation:", newTransformation);
     
-    console.log("Saving new transformation...", newTransformation);
-    setShowNewTransformationForm(false);
+      // Refresh the transformations list
+      const updatedTransformations = await transformationsAPI.list('name', 'asc');
+      setTransformations(updatedTransformations);
     
-    // Reset form
-    setNewTransformationName("New Tranformation");
+      // Close form and reset
+      setShowNewTransformationForm(false);
+      setNewTransformationName("New Transformation");
     setNewTransformationCardTitle("New Transformation Title");
     setNewTransformationDescription("New Transformation Description");
     setNewTransformationPrompt("New Transformation Prompt");
-  };
-
-  const handleDeleteTransformation = (id: string) => {
-    setUserTransformations(prev => prev.filter(t => t.id !== id));
-    // If the deleted transformation was expanded, close it
-    if (expandedTransformation === id) {
-      setExpandedTransformation(null);
+      
+    } catch (error) {
+      console.error("Error creating transformation:", error);
+      setErrorTransformations(error instanceof Error ? error.message : 'Failed to create transformation');
+    } finally {
+      setLoadingTransformations(false);
     }
   };
+
 
   const handleSuggestByAI = () => {
     // AI suggestion logic here
     console.log("Getting AI suggestions...");
   };
 
-  const handleToggleExpansion = (transformationName: string) => {
-    setExpandedTransformation(expandedTransformation === transformationName ? null : transformationName);
+  const handleToggleExpansion = (transformationId: string) => {
+    setExpandedTransformation(expandedTransformation === transformationId ? null : transformationId);
     // Set the current transformation values when expanding
-    if (expandedTransformation !== transformationName) {
-      setTransformationName(transformationName);
-      setCardTitle(transformationName);
+    if (expandedTransformation !== transformationId) {
+      const transformation = transformations.find(t => t.id === transformationId);
+      if (transformation) {
+        setTransformationName(transformation.name);
+        setCardTitle(transformation.title);
+      }
     }
+  };
+
+  const handleEditTransformation = (transformation: Transformation) => {
+    setEditingTransformation(transformation.id);
+    setEditFormData({
+      name: transformation.name,
+      title: transformation.title,
+      description: transformation.description,
+      prompt: transformation.prompt
+    });
+  };
+
+  const handleSaveTransformation = async (transformationId: string) => {
+    try {
+      setSavingTransformation(transformationId);
+      
+      await transformationsAPI.update(transformationId, {
+        name: editFormData.name,
+        title: editFormData.title,
+        description: editFormData.description,
+        prompt: editFormData.prompt
+      });
+      
+      // Refresh transformations list
+      const updatedTransformations = await transformationsAPI.list('name', 'asc');
+      setTransformations(updatedTransformations);
+      
+      setEditingTransformation(null);
+      setEditFormData({ name: '', title: '', description: '', prompt: '' });
+      
+      console.log("Transformation updated successfully");
+    } catch (error) {
+      console.error("Error updating transformation:", error);
+      setErrorTransformations(error instanceof Error ? error.message : 'Failed to update transformation');
+    } finally {
+      setSavingTransformation(null);
+    }
+  };
+
+  const handleDeleteTransformation = async (transformationId: string) => {
+    try {
+      setDeletingTransformation(transformationId);
+      
+      await transformationsAPI.delete(transformationId);
+      
+      // Refresh transformations list
+      const updatedTransformations = await transformationsAPI.list('name', 'asc');
+      setTransformations(updatedTransformations);
+      
+      // If the deleted transformation was expanded or being edited, close it
+      if (expandedTransformation === transformationId) {
+        setExpandedTransformation(null);
+      }
+      if (editingTransformation === transformationId) {
+        setEditingTransformation(null);
+      }
+      
+      console.log("Transformation deleted successfully");
+    } catch (error) {
+      console.error("Error deleting transformation:", error);
+      setErrorTransformations(error instanceof Error ? error.message : 'Failed to delete transformation');
+    } finally {
+      setDeletingTransformation(null);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingTransformation(null);
+    setEditFormData({ name: '', title: '', description: '', prompt: '' });
+  };
+
+  // EditTemplateForm component
+  const EditTemplateForm = ({ template, onSave, onCancel, saving }: {
+    template: PodcastTemplate;
+    onSave: (data: any) => void;
+    onCancel: () => void;
+    saving: boolean;
+  }) => {
+    const [editData, setEditData] = useState({
+      name: template.name,
+      podcast_name: template.podcast_name,
+      podcast_tagline: template.podcast_tagline,
+      output_language: template.output_language,
+      person1_role: template.person1_role || [],
+      person2_role: template.person2_role || [],
+      conversation_style: template.conversation_style || [],
+      engagement_technique: template.engagement_technique || [],
+      dialogue_structure: template.dialogue_structure || [],
+      user_instructions: template.user_instructions || '',
+      ending_message: template.ending_message || '',
+      creativity: template.creativity,
+      voice1: template.voice1,
+      voice2: template.voice2,
+      provider: template.provider,
+      model: template.model,
+      transcript_model: template.transcript_model || '',
+      transcript_model_provider: template.transcript_model_provider || '',
+    });
+
+    const handleSave = () => {
+      onSave(editData);
+    };
+
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-template-name">Template Name</Label>
+            <Input
+              id="edit-template-name"
+              value={editData.name}
+              onChange={(e) => setEditData({...editData, name: e.target.value})}
+              placeholder="Enter template name"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-podcast-name">Podcast Name</Label>
+            <Input
+              id="edit-podcast-name"
+              value={editData.podcast_name}
+              onChange={(e) => setEditData({...editData, podcast_name: e.target.value})}
+              placeholder="Enter podcast name"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-podcast-tagline">Podcast Tagline</Label>
+            <Input
+              id="edit-podcast-tagline"
+              value={editData.podcast_tagline}
+              onChange={(e) => setEditData({...editData, podcast_tagline: e.target.value})}
+              placeholder="Enter podcast tagline"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-language">Language</Label>
+            <Input
+              id="edit-language"
+              value={editData.output_language}
+              onChange={(e) => setEditData({...editData, output_language: e.target.value})}
+              placeholder="Enter language"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-voice1">Voice 1</Label>
+            <Input
+              id="edit-voice1"
+              value={editData.voice1}
+              onChange={(e) => setEditData({...editData, voice1: e.target.value})}
+              placeholder="Enter voice name"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-voice2">Voice 2</Label>
+            <Input
+              id="edit-voice2"
+              value={editData.voice2}
+              onChange={(e) => setEditData({...editData, voice2: e.target.value})}
+              placeholder="Enter voice name"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="edit-creativity">Creativity</Label>
+          <Slider
+            value={[editData.creativity]}
+            onValueChange={(value) => setEditData({...editData, creativity: value[0]})}
+            max={1}
+            min={0}
+            step={0.01}
+            className="w-full"
+          />
+          <div className="text-xs text-muted-foreground">Creativity level: {editData.creativity}</div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="edit-user-instructions">User Instructions</Label>
+          <Textarea
+            id="edit-user-instructions"
+            value={editData.user_instructions}
+            onChange={(e) => setEditData({...editData, user_instructions: e.target.value})}
+            placeholder="Enter user instructions"
+            rows={3}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="edit-ending-message">Ending Message</Label>
+          <Textarea
+            id="edit-ending-message"
+            value={editData.ending_message}
+            onChange={(e) => setEditData({...editData, ending_message: e.target.value})}
+            placeholder="Enter ending message"
+            rows={2}
+          />
+        </div>
+
+        {/* Additional Fields */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-provider">Provider</Label>
+            <Input
+              id="edit-provider"
+              value={editData.provider}
+              onChange={(e) => setEditData({...editData, provider: e.target.value})}
+              placeholder="Enter provider"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-model">Model</Label>
+            <Input
+              id="edit-model"
+              value={editData.model}
+              onChange={(e) => setEditData({...editData, model: e.target.value})}
+              placeholder="Enter model"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-transcript-model">Transcript Model</Label>
+            <Input
+              id="edit-transcript-model"
+              value={editData.transcript_model}
+              onChange={(e) => setEditData({...editData, transcript_model: e.target.value})}
+              placeholder="Enter transcript model"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-transcript-provider">Transcript Provider</Label>
+            <Input
+              id="edit-transcript-provider"
+              value={editData.transcript_model_provider}
+              onChange={(e) => setEditData({...editData, transcript_model_provider: e.target.value})}
+              placeholder="Enter transcript provider"
+            />
+          </div>
+        </div>
+
+        {/* Array Fields */}
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-person1-roles">Person 1 Roles (comma-separated)</Label>
+            <Textarea
+              id="edit-person1-roles"
+              value={editData.person1_role.join(', ')}
+              onChange={(e) => setEditData({...editData, person1_role: e.target.value.split(',').map(s => s.trim()).filter(s => s)})}
+              placeholder="Enter roles separated by commas"
+              rows={2}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-person2-roles">Person 2 Roles (comma-separated)</Label>
+            <Textarea
+              id="edit-person2-roles"
+              value={editData.person2_role.join(', ')}
+              onChange={(e) => setEditData({...editData, person2_role: e.target.value.split(',').map(s => s.trim()).filter(s => s)})}
+              placeholder="Enter roles separated by commas"
+              rows={2}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-conversation-style">Conversation Style (comma-separated)</Label>
+            <Textarea
+              id="edit-conversation-style"
+              value={editData.conversation_style.join(', ')}
+              onChange={(e) => setEditData({...editData, conversation_style: e.target.value.split(',').map(s => s.trim()).filter(s => s)})}
+              placeholder="Enter styles separated by commas"
+              rows={2}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-engagement-technique">Engagement Techniques (comma-separated)</Label>
+            <Textarea
+              id="edit-engagement-technique"
+              value={editData.engagement_technique.join(', ')}
+              onChange={(e) => setEditData({...editData, engagement_technique: e.target.value.split(',').map(s => s.trim()).filter(s => s)})}
+              placeholder="Enter techniques separated by commas"
+              rows={2}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-dialogue-structure">Dialogue Structure (comma-separated)</Label>
+            <Textarea
+              id="edit-dialogue-structure"
+              value={editData.dialogue_structure.join(', ')}
+              onChange={(e) => setEditData({...editData, dialogue_structure: e.target.value.split(',').map(s => s.trim()).filter(s => s)})}
+              placeholder="Enter structure elements separated by commas"
+              rows={2}
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 pt-4 border-t">
+          <Button
+            variant="outline"
+            onClick={onCancel}
+            disabled={saving}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+          >
+            {saving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Save
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -342,7 +791,7 @@ Analyze the provided content and create a Table of Contents:
       {/* Main Content */}
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 max-w-7xl animate-slide-in-bottom">
         <Tabs defaultValue="transformations" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 h-auto">
+          <TabsList className="grid w-full grid-cols-2 h-auto">
             <TabsTrigger value="transformations" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-3">
               <Leaf className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden xs:inline">Transformations</span>
@@ -352,10 +801,6 @@ Analyze the provided content and create a Table of Contents:
               <Mic className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden xs:inline">Podcast Templates</span>
               <span className="xs:hidden">Podcast</span>
-            </TabsTrigger>
-            <TabsTrigger value="general" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-3">
-              <SettingsIcon className="h-3 w-3 sm:h-4 sm:w-4" />
-              General
             </TabsTrigger>
           </TabsList>
 
@@ -388,8 +833,12 @@ Analyze the provided content and create a Table of Contents:
                     <div className="bg-white border border-border rounded-xl">
                       {/* New Transformation Header */}
                       <div 
-                        className="flex items-center justify-between p-4 hover:bg-muted/50 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-sm"
-                        onClick={() => setShowNewTransformationForm(false)}
+                        className={`flex items-center justify-between p-4 transition-all duration-200 hover:scale-[1.02] hover:shadow-sm ${
+                          loadingTransformations 
+                            ? 'cursor-not-allowed opacity-50' 
+                            : 'hover:bg-muted/50 cursor-pointer'
+                        }`}
+                        onClick={() => !loadingTransformations && setShowNewTransformationForm(false)}
                       >
                         <span className="font-medium">New Tranformation</span>
                         <div className="text-muted-foreground">
@@ -410,6 +859,7 @@ Analyze the provided content and create a Table of Contents:
                               onChange={(e) => setNewTransformationName(e.target.value)}
                               placeholder="Enter transformation name"
                               className="text-sm"
+                              disabled={loadingTransformations}
                             />
                           </div>
 
@@ -421,6 +871,7 @@ Analyze the provided content and create a Table of Contents:
                               onChange={(e) => setNewTransformationCardTitle(e.target.value)}
                               placeholder="Enter card title"
                               className="text-sm"
+                              disabled={loadingTransformations}
                             />
                           </div>
 
@@ -433,6 +884,7 @@ Analyze the provided content and create a Table of Contents:
                               rows={3}
                               placeholder="Enter description"
                               className="text-sm"
+                              disabled={loadingTransformations}
                             />
                           </div>
 
@@ -445,14 +897,29 @@ Analyze the provided content and create a Table of Contents:
                               rows={8}
                               className="font-mono text-xs sm:text-sm"
                               placeholder="Enter your prompt here..."
+                              disabled={loadingTransformations}
                             />
                           </div>
 
                           {/* Save Button */}
                           <div className="flex justify-end">
-                            <Button onClick={handleSaveNewTransformation} size="sm" className="w-full sm:w-auto">
+                            <Button 
+                              onClick={handleSaveNewTransformation} 
+                              size="sm" 
+                              className="w-full sm:w-auto"
+                              disabled={loadingTransformations}
+                            >
+                              {loadingTransformations ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Creating...
+                                </>
+                              ) : (
+                                <>
                               <Save className="h-4 w-4 mr-2" />
                               Save
+                                </>
+                              )}
                             </Button>
                           </div>
                         </div>
@@ -549,21 +1016,59 @@ Analyze the provided content and create a Table of Contents:
                     </div>
                   ))}
 
+                  {/* Loading State */}
+                  {loadingTransformations && (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                      <span className="text-muted-foreground">Loading transformations...</span>
+                    </div>
+                  )}
+
+                  {/* Error State */}
+                  {errorTransformations && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                      <p className="text-red-800 text-sm">
+                        Error loading transformations: {errorTransformations}
+                      </p>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="mt-2"
+                        onClick={() => {
+                          setErrorTransformations(null);
+                          setLoadingTransformations(true);
+                          // Re-fetch transformations
+                          transformationsAPI.list('name', 'asc')
+                            .then(data => {
+                              setTransformations(data);
+                              setLoadingTransformations(false);
+                            })
+                            .catch(error => {
+                              setErrorTransformations(error instanceof Error ? error.message : 'Failed to fetch transformations');
+                              setLoadingTransformations(false);
+                            });
+                        }}
+                      >
+                        Retry
+                      </Button>
+                    </div>
+                  )}
+
                   {/* Default Transformations */}
-                  {transformations.map((transformation, index) => (
-                    <div key={index} className="bg-white border border-border rounded-lg">
+                  {!loadingTransformations && !errorTransformations && transformations.map((transformation) => (
+                    <div key={transformation.id} className="bg-white border border-border rounded-lg">
                       {/* Transformation Header */}
                       <div
                         className="flex items-center justify-between p-4 hover:bg-muted/50 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-sm"
-                        onClick={() => handleToggleExpansion(transformation.name)}
+                        onClick={() => handleToggleExpansion(transformation.id)}
                       >
                         <span className="font-medium">
                           {transformation.name}
-                          {transformation.name === "Dense Summary" && " - default"}
+                          {transformation.apply_default && " - default"}
                         </span>
                         <div className="text-muted-foreground">
                           <svg 
-                            className={`h-4 w-4 transition-transform ${expandedTransformation === transformation.name ? 'rotate-180' : ''}`} 
+                            className={`h-4 w-4 transition-transform ${expandedTransformation === transformation.id ? 'rotate-180' : ''}`} 
                             fill="none" 
                             stroke="currentColor" 
                             viewBox="0 0 24 24"
@@ -574,16 +1079,17 @@ Analyze the provided content and create a Table of Contents:
                       </div>
 
                       {/* Expanded Content */}
-                      {expandedTransformation === transformation.name && (
+                      {expandedTransformation === transformation.id && (
                         <div className="p-4 border-t border-border">
                           <div className="space-y-4">
                             {/* Transformation Name */}
                             <div className="space-y-2">
                               <Label>Transformation Name</Label>
                               <Input 
-                                value={transformationName}
-                                onChange={(e) => setTransformationName(e.target.value)}
-                                placeholder="Enter transformation name"
+                                value={editingTransformation === transformation.id ? editFormData.name : transformation.name}
+                                onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
+                                readOnly={editingTransformation !== transformation.id}
+                                className={editingTransformation === transformation.id ? "" : "bg-muted"}
                               />
                             </div>
 
@@ -591,9 +1097,10 @@ Analyze the provided content and create a Table of Contents:
                             <div className="space-y-2">
                               <Label>Card Title (this will be the title of all cards created by this transformation). ie 'Key Topics'</Label>
                               <Input 
-                                value={cardTitle}
-                                onChange={(e) => setCardTitle(e.target.value)}
-                                placeholder="Enter card title"
+                                value={editingTransformation === transformation.id ? editFormData.title : transformation.title}
+                                onChange={(e) => setEditFormData(prev => ({ ...prev, title: e.target.value }))}
+                                readOnly={editingTransformation !== transformation.id}
+                                className={editingTransformation === transformation.id ? "" : "bg-muted"}
                               />
                             </div>
 
@@ -601,9 +1108,10 @@ Analyze the provided content and create a Table of Contents:
                             <div className="space-y-2">
                               <Label>Description (displayed as a hint in the UI so you know what you are selecting)</Label>
                               <Input 
-                                value={transformation.description}
-                                onChange={(e) => setTransformationDescription(e.target.value)}
-                                placeholder="Enter description"
+                                value={editingTransformation === transformation.id ? editFormData.description : transformation.description}
+                                onChange={(e) => setEditFormData(prev => ({ ...prev, description: e.target.value }))}
+                                readOnly={editingTransformation !== transformation.id}
+                                className={editingTransformation === transformation.id ? "" : "bg-muted"}
                               />
                             </div>
 
@@ -611,12 +1119,83 @@ Analyze the provided content and create a Table of Contents:
                             <div className="space-y-2">
                               <Label>Prompt</Label>
                               <Textarea
-                                value={transformation.prompt}
-                                onChange={(e) => setTransformationPrompt(e.target.value)}
+                                value={editingTransformation === transformation.id ? editFormData.prompt : transformation.prompt}
+                                onChange={(e) => setEditFormData(prev => ({ ...prev, prompt: e.target.value }))}
+                                readOnly={editingTransformation !== transformation.id}
                                 rows={20}
-                                className="font-mono text-sm"
+                                className={`font-mono text-sm ${editingTransformation === transformation.id ? "" : "bg-muted"}`}
                                 placeholder="Enter your prompt here..."
                               />
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex items-center gap-2 pt-4 border-t">
+                              {editingTransformation === transformation.id ? (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleSaveTransformation(transformation.id)}
+                                    disabled={savingTransformation === transformation.id}
+                                    className="flex-1"
+                                  >
+                                    {savingTransformation === transformation.id ? (
+                                      <>
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        Saving...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Save className="h-4 w-4 mr-2" />
+                                        Save
+                                      </>
+                                    )}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={handleCancelEdit}
+                                    disabled={savingTransformation === transformation.id}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditTransformation(transformation);
+                                    }}
+                                    className="flex-1"
+                                  >
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteTransformation(transformation.id);
+                                    }}
+                                    disabled={deletingTransformation === transformation.id}
+                                  >
+                                    {deletingTransformation === transformation.id ? (
+                                      <>
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        Deleting...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Delete
+                                      </>
+                                    )}
+                                  </Button>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -629,14 +1208,49 @@ Analyze the provided content and create a Table of Contents:
           </TabsContent>
 
           <TabsContent value="podcast-templates" className="mt-4 sm:mt-6">
-            <Card>
-              <CardHeader className="p-4 sm:p-6">
-                <div className="flex items-center gap-2">
-                  <ArrowLeft className="h-4 w-4" />
-                  <CardTitle className="text-lg sm:text-xl">Podcast Templates</CardTitle>
-                </div>
-                <CardDescription className="text-sm">Create new Template</CardDescription>
-              </CardHeader>
+            <div className="space-y-6">
+              {/* Header */}
+              <div className="flex items-center gap-2">
+                <Mic className="h-6 w-6 text-primary" />
+                <h2 className="text-2xl font-bold">Podcast Templates</h2>
+              </div>
+              
+              <p className="text-muted-foreground">
+                Podcast templates define the structure, style, and voices for generating podcast episodes from your notebook content.
+              </p>
+
+               {/* Templates List Header */}
+               <div className="flex items-center justify-between">
+                 <h3 className="text-lg font-semibold">Your Podcast Templates</h3>
+                 <Button 
+                   onClick={handleCreateNewTemplate}
+                   className="gap-2"
+                 >
+                   <Plus className="h-4 w-4" />
+                   Create new template
+                 </Button>
+               </div>
+
+               {/* Create New Template Form */}
+               {showNewTemplateForm && (
+                <Card className="border-primary/20 bg-primary/5">
+               <CardHeader className="p-4 sm:p-6">
+                 <div className="flex items-center justify-between">
+                   <div className="flex items-center gap-2">
+                     <Plus className="h-4 w-4" />
+                     <CardTitle className="text-lg sm:text-xl">Create New Template</CardTitle>
+                   </div>
+                   <Button 
+                     variant="ghost" 
+                     size="sm"
+                     onClick={() => setShowNewTemplateForm(false)}
+                     className="h-8 w-8 p-0"
+                   >
+                     <X className="h-4 w-4" />
+                   </Button>
+                 </div>
+                 <CardDescription className="text-sm">Fill out the details below to create a new podcast template</CardDescription>
+               </CardHeader>
               <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6">
                 {/* Template Details */}
                 <div className="space-y-4">
@@ -693,6 +1307,18 @@ Analyze the provided content and create a Table of Contents:
                         <SelectItem value="zh">Chinese</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="user-instructions" className="text-sm">User Instructions</Label>
+                    <Textarea
+                      id="user-instructions"
+                      value={userInstructions}
+                      onChange={(e) => setUserInstructions(e.target.value)}
+                      placeholder="Any additional instructions to pass to the LLM that will generate the transcript"
+                      rows={3}
+                      className="text-sm"
+                    />
                   </div>
                 </div>
 
@@ -976,28 +1602,250 @@ Analyze the provided content and create a Table of Contents:
 
                 {/* Save Button */}
                 <div className="flex justify-end">
-                  <Button onClick={handleSave} className="gap-2">
+                      <Button 
+                        onClick={handleSave} 
+                        className="gap-2"
+                        disabled={savingTemplate}
+                      >
+                        {savingTemplate ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
                     <Save className="h-4 w-4" />
-                    Save
+                        )}
+                        {savingTemplate ? "Saving..." : "Save"}
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+               </CardContent>
+             </Card>
+               )}
+
+               {/* Templates List */}
+               <div className="space-y-3">
+                 {loadingTemplates ? (
+                   <div className="flex items-center justify-center py-8">
+                     <Loader2 className="h-6 w-6 animate-spin" />
+                     <span className="ml-2">Loading templates...</span>
+                   </div>
+                 ) : existingTemplates.length === 0 ? (
+                   <div className="text-center py-8 text-muted-foreground">
+                     <Mic className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                     <p>No templates created yet</p>
+                     <p className="text-sm">Create your first template above</p>
+                   </div>
+                 ) : (
+                   existingTemplates.map((template) => (
+                     <Card key={template.name} className="cursor-pointer hover:shadow-md transition-shadow">
+                       <CardContent 
+                         className="p-4"
+                         onClick={() => toggleTemplateExpansion(template.name)}
+                       >
+                         <div className="flex items-center justify-between">
+                           <div className="flex items-center gap-3">
+                             <Mic className="h-5 w-5 text-primary" />
+                             <div>
+                               <p className="font-medium">{template.name}</p>
+                               <p className="text-sm text-muted-foreground">
+                                 {template.podcast_name} • {template.output_language}
+                               </p>
+                             </div>
+                           </div>
+                           <div className="flex items-center gap-2">
+                             <span className="text-xs text-muted-foreground">
+                               {(template.person1_role?.length || 0) + (template.person2_role?.length || 0)} roles
+                             </span>
+                             <div className={`transform transition-transform ${
+                               expandedTemplate === template.name ? 'rotate-180' : ''
+                             }`}>
+                               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                               </svg>
+                             </div>
+                           </div>
+                         </div>
+                         
+                         {/* Expanded Content */}
+                         {expandedTemplate === template.name && (
+                           <div className="mt-4 pt-4 border-t space-y-4">
+                             {editingTemplate === template.name ? (
+                               /* Edit Form */
+                               <div onClick={(e) => e.stopPropagation()}>
+                                 <EditTemplateForm 
+                                   template={template}
+                                   onSave={(updatedData) => handleSaveTemplateEdit(template.name, updatedData)}
+                                   onCancel={() => setEditingTemplate(null)}
+                                   saving={savingTemplateEdit === template.name}
+                                 />
+                               </div>
+                             ) : (
+                               /* View Mode */
+                               <>
+                                 {/* Template Details */}
+                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                   <div>
+                                     <span className="font-medium">Podcast Name:</span> {template.podcast_name}
+                                   </div>
+                                   <div>
+                                     <span className="font-medium">Tagline:</span> {template.podcast_tagline}
+                                   </div>
+                                   <div>
+                                     <span className="font-medium">Language:</span> {template.output_language}
+                                   </div>
+                                   <div>
+                                     <span className="font-medium">Creativity:</span> {template.creativity}
+                                   </div>
+                                   <div>
+                                     <span className="font-medium">Provider:</span> {template.provider}
+                                   </div>
+                                   <div>
+                                     <span className="font-medium">Model:</span> {template.model}
+                                   </div>
+                                   <div>
+                                     <span className="font-medium">Transcript Model:</span> {template.transcript_model || 'Not set'}
+                                   </div>
+                                   <div>
+                                     <span className="font-medium">Transcript Provider:</span> {template.transcript_model_provider || 'Not set'}
+                                   </div>
+                                 </div>
+                                 
+                                 {/* Roles */}
+                                 <div className="space-y-2">
+                                   <div className="text-sm">
+                                     <span className="font-medium">Person 1 Roles:</span>
+                                     <div className="flex flex-wrap gap-1 mt-1">
+                                       {template.person1_role && template.person1_role.length > 0 ? (
+                                         template.person1_role.map((role, index) => (
+                                           <Badge key={index} variant="secondary" className="text-xs">
+                                             {role}
+                                           </Badge>
+                                         ))
+                                       ) : (
+                                         <span className="text-xs text-muted-foreground italic">No roles defined</span>
+                                       )}
+                                     </div>
+                                   </div>
+                                   <div className="text-sm">
+                                     <span className="font-medium">Person 2 Roles:</span>
+                                     <div className="flex flex-wrap gap-1 mt-1">
+                                       {template.person2_role && template.person2_role.length > 0 ? (
+                                         template.person2_role.map((role, index) => (
+                                           <Badge key={index} variant="secondary" className="text-xs">
+                                             {role}
+                                           </Badge>
+                                         ))
+                                       ) : (
+                                         <span className="text-xs text-muted-foreground italic">No roles defined</span>
+                                       )}
+                                     </div>
+                                   </div>
+                                 </div>
+
+                                 {/* Conversation Style */}
+                                 <div className="space-y-2">
+                                   <div className="text-sm">
+                                     <span className="font-medium">Conversation Style:</span>
+                                     <div className="flex flex-wrap gap-1 mt-1">
+                                       {template.conversation_style && template.conversation_style.length > 0 ? (
+                                         template.conversation_style.map((style, index) => (
+                                           <Badge key={index} variant="outline" className="text-xs">
+                                             {style}
+                                           </Badge>
+                                         ))
+                                       ) : (
+                                         <span className="text-xs text-muted-foreground italic">No styles defined</span>
+                                       )}
+                                     </div>
+                                   </div>
+                                   <div className="text-sm">
+                                     <span className="font-medium">Engagement Techniques:</span>
+                                     <div className="flex flex-wrap gap-1 mt-1">
+                                       {template.engagement_technique && template.engagement_technique.length > 0 ? (
+                                         template.engagement_technique.map((technique, index) => (
+                                           <Badge key={index} variant="outline" className="text-xs">
+                                             {technique}
+                                           </Badge>
+                                         ))
+                                       ) : (
+                                         <span className="text-xs text-muted-foreground italic">No techniques defined</span>
+                                       )}
+                                     </div>
+                                   </div>
+                                   <div className="text-sm">
+                                     <span className="font-medium">Dialogue Structure:</span>
+                                     <div className="flex flex-wrap gap-1 mt-1">
+                                       {template.dialogue_structure && template.dialogue_structure.length > 0 ? (
+                                         template.dialogue_structure.map((structure, index) => (
+                                           <Badge key={index} variant="outline" className="text-xs">
+                                             {structure}
+                                           </Badge>
+                                         ))
+                                       ) : (
+                                         <span className="text-xs text-muted-foreground italic">No structure defined</span>
+                                       )}
+                                     </div>
+                                   </div>
+                                 </div>
+
+                                 {/* Voices and Additional Info */}
+                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                   <div>
+                                     <span className="font-medium">Voice 1:</span> {template.voice1}
+                                   </div>
+                                   <div>
+                                     <span className="font-medium">Voice 2:</span> {template.voice2}
+                                   </div>
+                               <div className="md:col-span-2">
+                                 <span className="font-medium">User Instructions:</span>
+                                 <p className="text-muted-foreground mt-1">{template.user_instructions || 'No instructions provided'}</p>
+                               </div>
+                               <div className="md:col-span-2">
+                                 <span className="font-medium">Ending Message:</span>
+                                 <p className="text-muted-foreground mt-1">{template.ending_message || 'No ending message set'}</p>
+                               </div>
+                                 </div>
+
+                                 {/* Action Buttons */}
+                                 <div className="flex justify-end gap-2 pt-4 border-t">
+                                   <Button
+                                     variant="outline"
+                                     size="sm"
+                                     onClick={(e) => {
+                                       e.stopPropagation();
+                                       handleEditTemplate(template.name);
+                                     }}
+                                     disabled={editingTemplate === template.name || savingTemplateEdit === template.name}
+                                   >
+                                     <Edit className="h-4 w-4 mr-2" />
+                                     Edit
+                                   </Button>
+                                   <Button
+                                     variant="destructive"
+                                     size="sm"
+                                     onClick={(e) => {
+                                       e.stopPropagation();
+                                       handleDeleteTemplate(template.name);
+                                     }}
+                                     disabled={deletingTemplate === template.name}
+                                   >
+                                     {deletingTemplate === template.name ? (
+                                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                     ) : (
+                                       <Trash2 className="h-4 w-4 mr-2" />
+                                     )}
+                                     {deletingTemplate === template.name ? 'Deleting...' : 'Delete'}
+                                   </Button>
+                                 </div>
+                               </>
+                             )}
+                           </div>
+                         )}
+                       </CardContent>
+                     </Card>
+                   ))
+                 )}
+               </div>
+                 </div>
           </TabsContent>
 
-          <TabsContent value="general" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>General Settings</CardTitle>
-                <CardDescription>Configure your general preferences</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <p className="text-muted-foreground">General settings will be implemented here.</p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
       </div>
     </div>

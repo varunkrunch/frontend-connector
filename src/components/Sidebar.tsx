@@ -47,7 +47,7 @@ export function Sidebar({
         {!isCollapsed && (
           <div className="flex items-center gap-2">
             <Brain className="h-6 w-6 text-primary" />
-            <h1 className="text-xl font-semibold">NotebookLM</h1>
+            <h1 className="text-3xl font-black tracking-tight">NerdNest</h1>
           </div>
         )}
         <Button

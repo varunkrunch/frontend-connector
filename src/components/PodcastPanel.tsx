@@ -22,14 +22,16 @@ import {
 } from "lucide-react";
 import { podcastsAPI } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
-import type { Podcast } from "@/types";
+import type { Podcast, PodcastTemplate } from "@/types";
 
 interface PodcastPanelProps {
   notebookId: string;
+  notebookName?: string;
 }
 
-export function PodcastPanel({ notebookId }: PodcastPanelProps) {
+export function PodcastPanel({ notebookId, notebookName }: PodcastPanelProps) {
   const [podcasts, setPodcasts] = useState<Podcast[]>([]);
+  const [templates, setTemplates] = useState<PodcastTemplate[]>([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [selectedPodcast, setSelectedPodcast] = useState<Podcast | null>(null);
@@ -37,16 +39,22 @@ export function PodcastPanel({ notebookId }: PodcastPanelProps) {
   const [currentTime, setCurrentTime] = useState(0);
   const [showGenerateDialog, setShowGenerateDialog] = useState(false);
   const [prompt, setPrompt] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
+  const [podcastLength, setPodcastLength] = useState<string>("Medium (10-20 min)");
   const { toast } = useToast();
 
   useEffect(() => {
     loadPodcasts();
-  }, [notebookId]);
+    loadTemplates();
+  }, [notebookId, notebookName]);
 
   const loadPodcasts = async () => {
     try {
       setLoading(true);
-      const data = await podcastsAPI.list(notebookId);
+      // Use notebook name if available, otherwise fall back to general list
+      const data = notebookName 
+        ? await podcastsAPI.listByNotebookName(notebookName)
+        : await podcastsAPI.list(notebookId);
       setPodcasts(data);
     } catch (error) {
       toast({
@@ -56,6 +64,19 @@ export function PodcastPanel({ notebookId }: PodcastPanelProps) {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadTemplates = async () => {
+    try {
+      const data = await podcastsAPI.getTemplates();
+      setTemplates(data);
+      // Set default template if available
+      if (data.length > 0 && !selectedTemplate) {
+        setSelectedTemplate(data[0].name);
+      }
+    } catch (error) {
+      console.error("Error loading templates:", error);
     }
   };
 
@@ -73,10 +94,15 @@ export function PodcastPanel({ notebookId }: PodcastPanelProps) {
       setGenerating(true);
       setShowGenerateDialog(false);
       
+      // Generate episode name from timestamp
+      const episodeName = `Episode ${new Date().toLocaleString()}`;
+      
       await podcastsAPI.generate({
-        notebook_id: notebookId,
-        prompt: prompt,
-        style: "conversational", // Could be made configurable
+        template_name: selectedTemplate,
+        notebook_name: notebookId, // Assuming notebookId is the notebook name
+        episode_name: episodeName,
+        instructions: prompt,
+        podcast_length: podcastLength,
       });
       
       toast({
@@ -263,10 +289,10 @@ export function PodcastPanel({ notebookId }: PodcastPanelProps) {
                         <Mic className="h-4 w-4 text-primary" />
                       </div>
                       <div className="flex-1">
-                        <h4 className="font-medium">{podcast.title}</h4>
-                        {podcast.description && (
+                        <h4 className="font-medium">{podcast.name}</h4>
+                        {podcast.instructions && (
                           <p className="text-sm text-muted-foreground mt-1">
-                            {podcast.description}
+                            {podcast.instructions}
                           </p>
                         )}
                         <div className="flex items-center gap-4 mt-2">
@@ -279,7 +305,7 @@ export function PodcastPanel({ notebookId }: PodcastPanelProps) {
                             </span>
                           )}
                           <span className="text-xs text-muted-foreground">
-                            {new Date(podcast.created_at).toLocaleDateString()}
+                            {new Date(podcast.created).toLocaleDateString()}
                           </span>
                         </div>
                       </div>
@@ -325,12 +351,44 @@ export function PodcastPanel({ notebookId }: PodcastPanelProps) {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">
+                  Template
+                </label>
+                <select
+                  value={selectedTemplate}
+                  onChange={(e) => setSelectedTemplate(e.target.value)}
+                  className="w-full p-2 border border-border rounded-md bg-background"
+                >
+                  {templates.map((template) => (
+                    <option key={template.id} value={template.name}>
+                      {template.name} - {template.podcast_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">
+                  Length
+                </label>
+                <select
+                  value={podcastLength}
+                  onChange={(e) => setPodcastLength(e.target.value)}
+                  className="w-full p-2 border border-border rounded-md bg-background"
+                >
+                  <option value="Short (5-10 min)">Short (5-10 min)</option>
+                  <option value="Medium (10-20 min)">Medium (10-20 min)</option>
+                  <option value="Longer (20+ min)">Longer (20+ min)</option>
+                </select>
+              </div>
+            </div>
             <div>
               <label className="text-sm font-medium mb-2 block">
                 Podcast Instructions
               </label>
               <Textarea
-                placeholder="E.g., Create a 10-minute conversational podcast discussing the main topics from my sources. Focus on key insights and practical applications."
+                placeholder="E.g., Create a conversational podcast discussing the main topics from my sources. Focus on key insights and practical applications."
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 className="min-h-[120px]"

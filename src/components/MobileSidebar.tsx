@@ -108,7 +108,7 @@ export function MobileSidebar({ isOpen, onOpenChange, notebookId }: MobileSideba
               <div className="p-2 bg-primary/10 rounded-lg">
                 <BookOpen className="h-5 w-5 text-primary" />
               </div>
-              <h2 className="text-lg font-semibold">NotebookLM</h2>
+              <h2 className="text-2xl font-black tracking-tight">NerdNest</h2>
             </div>
             <Button
               variant="ghost"

@@ -5,7 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { ArrowLeft, Download, Trash2, Minimize2, AudioLines, Video, Network, FileBarChart, Plus, FileText, ChevronLeft, Menu, X, Upload, Link, Type, Sparkles, Play, Edit, MoreVertical, MoreHorizontal, Globe, ExternalLink, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ArrowLeft, Download, Trash2, Minimize2, AudioLines, Video, Network, FileBarChart, Plus, FileText, ChevronLeft, Menu, X, Upload, Link, Type, Sparkles, Play, Pause, Edit, MoreVertical, MoreHorizontal, Globe, ExternalLink, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { notebookAPI } from "@/services/api";
 import type { Notebook } from "@/types";
@@ -14,12 +16,11 @@ import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
-import { sourcesAPI, notesAPI, podcastsAPI, serperAPI } from "@/services/api";
-import type { Source, Note, Podcast, SourceInsight } from "@/types";
+import { sourcesAPI, notesAPI, podcastsAPI, serperAPI, transformationsAPI } from "@/services/api";
+import type { Source, Note, Podcast, SourceInsight, Transformation, PodcastTemplate } from "@/types";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export default function NotebookDetail() {
   const { id } = useParams();
@@ -37,6 +38,11 @@ export default function NotebookDetail() {
   const [isLoadingNoteContent, setIsLoadingNoteContent] = useState(false);
   const [expandedNoteId, setExpandedNoteId] = useState<string | null>(null);
   const [viewingNote, setViewingNote] = useState<Note | null>(null);
+  const [showDeleteNoteModal, setShowDeleteNoteModal] = useState(false);
+  const [showRenameNoteModal, setShowRenameNoteModal] = useState(false);
+  const [noteToDelete, setNoteToDelete] = useState<Note | null>(null);
+  const [noteToRename, setNoteToRename] = useState<Note | null>(null);
+  const [newNoteTitle, setNewNoteTitle] = useState("");
   const [activeTab, setActiveTab] = useState("chat");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
@@ -50,9 +56,11 @@ export default function NotebookDetail() {
   const [isGeneratingPodcast, setIsGeneratingPodcast] = useState(false);
   const [podcastPrompt, setPodcastPrompt] = useState("");
   const [showPodcastForm, setShowPodcastForm] = useState(false);
+  const [playingPodcast, setPlayingPodcast] = useState<string | null>(null);
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
   const [podcastSettings, setPodcastSettings] = useState({
     episodeName: "",
-    template: "Deep Dive - get into it",
+    template: "",
     length: "Short (5-10 min)",
     maxChunks: 5,
     minChunkSize: 3
@@ -68,6 +76,10 @@ export default function NotebookDetail() {
   const [isAddingSource, setIsAddingSource] = useState(false);
   const [selectedTransformation, setSelectedTransformation] = useState("");
   const [transformationResults, setTransformationResults] = useState<Record<string, string>>({});
+  const [transformations, setTransformations] = useState<Transformation[]>([]);
+  const [podcastTemplates, setPodcastTemplates] = useState<PodcastTemplate[]>([]);
+  const [loadingPodcastTemplates, setLoadingPodcastTemplates] = useState(false);
+  const [loadingTransformations, setLoadingTransformations] = useState(false);
   const [selectedInsight, setSelectedInsight] = useState<SourceInsight | null>(null);
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [renameTitle, setRenameTitle] = useState("");
@@ -87,6 +99,16 @@ export default function NotebookDetail() {
       loadData();
     }
   }, [id, notebook]);
+
+  // Cleanup audio when component unmounts
+  useEffect(() => {
+    return () => {
+      if (audioElement) {
+        audioElement.pause();
+        audioElement.currentTime = 0;
+      }
+    };
+  }, [audioElement]);
 
   const loadNotebook = async () => {
     if (!id) return;
@@ -108,10 +130,62 @@ export default function NotebookDetail() {
     }
   };
 
+  const loadTransformations = async () => {
+    try {
+      console.log("🔄 Loading transformations...");
+      setLoadingTransformations(true);
+      const data = await transformationsAPI.list('name', 'asc');
+      console.log("📊 Received transformations:", data);
+      setTransformations(data || []);
+    } catch (error) {
+      console.error("❌ Error loading transformations:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load transformations",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingTransformations(false);
+    }
+  };
+
+  const loadPodcastTemplates = async () => {
+    setLoadingPodcastTemplates(true);
+    try {
+      console.log("Loading podcast templates...");
+      const templates = await podcastsAPI.getTemplates();
+      console.log("✅ Podcast templates loaded:", templates);
+      setPodcastTemplates(templates);
+      
+      // Set default template to first available template
+      if (templates.length > 0 && !podcastSettings.template) {
+        setPodcastSettings(prev => ({
+          ...prev,
+          template: templates[0].name
+        }));
+      }
+    } catch (error) {
+      console.error("❌ Error loading podcast templates:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load podcast templates",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingPodcastTemplates(false);
+    }
+  };
+
   const loadData = async () => {
     if (!id || !notebook) return;
     
     console.log("Loading data for notebook:", id, "name:", notebook.name);
+    
+    // Load transformations
+    await loadTransformations();
+    
+    // Load podcast templates
+    await loadPodcastTemplates();
     
     // Load sources (this works)
     try {
@@ -133,18 +207,22 @@ export default function NotebookDetail() {
     
     // Load notes using notebook name (this might fail, but we'll handle it gracefully)
     try {
+      console.log("🔍 Loading notes for notebook name:", notebook.name);
       const notesData = await notesAPI.listByNotebookName(notebook.name);
       console.log("✅ Notes loaded:", notesData);
+      console.log("📊 Notes count:", notesData?.length || 0);
       setNotes(notesData);
     } catch (error) {
       console.error("❌ Error loading notes:", error);
       setNotes([]); // Set empty array if notes fail
     }
     
-    // Load podcasts (this might fail, but we'll handle it gracefully)
+    // Load podcasts using notebook name (this might fail, but we'll handle it gracefully)
     try {
-      const podcastsData = await podcastsAPI.list(id);
+      console.log("🔍 Loading podcasts for notebook name:", notebook.name);
+      const podcastsData = await podcastsAPI.listByNotebookName(notebook.name);
       console.log("✅ Podcasts loaded:", podcastsData);
+      console.log("📊 Podcasts count:", podcastsData?.length || 0);
       setPodcasts(podcastsData);
     } catch (error) {
       console.error("❌ Error loading podcasts:", error);
@@ -300,18 +378,19 @@ export default function NotebookDetail() {
   };
 
   const handleSaveAsNote = async (transformation: string, content: string) => {
-    if (!id) return;
+    if (!id || !selectedSource || !selectedInsight) return;
     
     try {
-      const noteTitle = `${transformation} - ${selectedSource?.title || 'Source'}`;
-      
-      await notesAPI.create({
-        notebook_id: id,
-        title: noteTitle,
-        content: content,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+      console.log("💾 Saving insight as note:", {
+        sourceId: selectedSource.id,
+        insightId: selectedInsight.id,
+        notebookId: id,
+        transformation,
+        content: content.substring(0, 100) + "..."
       });
+      
+      // Use the new API endpoint that properly handles source insights
+      await sourcesAPI.saveInsightAsNote(selectedSource.id, selectedInsight.id, id);
       
       toast({
         title: "Note saved",
@@ -321,6 +400,7 @@ export default function NotebookDetail() {
       // Reload notes to show the new note in Studio panel
       loadData();
     } catch (error) {
+      console.error("❌ Error saving insight as note:", error);
       toast({
         title: "Failed to save note",
         description: "Could not save the transformation result as a note.",
@@ -343,11 +423,12 @@ export default function NotebookDetail() {
           description: "Your note has been updated successfully.",
         });
       } else {
-        await notesAPI.create({
-          notebook_id: id,
+        console.log("🔄 Creating new note with data:", { notebook_name: notebook.name, title: noteTitle, content: noteContent });
+        const createdNote = await notesAPI.createInNotebook(notebook.name, {
           title: noteTitle,
           content: noteContent,
         });
+        console.log("✅ Note created successfully:", createdNote);
         toast({
           title: "Note created",
           description: "Your note has been created successfully.",
@@ -357,7 +438,12 @@ export default function NotebookDetail() {
       setExpandedNoteId(null);
       setNoteTitle("");
       setNoteContent("");
-      loadData();
+      
+      // Add a small delay to ensure backend has processed the note creation
+      console.log("🔄 Refreshing data after note creation...");
+      setTimeout(() => {
+        loadData();
+      }, 500);
     } catch (error) {
       toast({
         title: "Error saving note",
@@ -377,6 +463,8 @@ export default function NotebookDetail() {
         description: "The note has been deleted successfully.",
       });
       loadData();
+      setShowDeleteNoteModal(false);
+      setNoteToDelete(null);
     } catch (error) {
       toast({
         title: "Error deleting note",
@@ -384,6 +472,40 @@ export default function NotebookDetail() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleRenameNote = async () => {
+    if (!noteToRename || !newNoteTitle.trim()) return;
+    
+    try {
+      await notesAPI.update(noteToRename.id, { title: newNoteTitle.trim() });
+      toast({
+        title: "Note renamed",
+        description: "The note has been renamed successfully.",
+      });
+      loadData(); // Reload data to update the UI
+      setShowRenameNoteModal(false);
+      setNoteToRename(null);
+      setNewNoteTitle("");
+    } catch (error) {
+      console.error("Error renaming note:", error);
+      toast({
+        title: "Error",
+        description: "Failed to rename the note. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const openDeleteModal = (note: Note) => {
+    setNoteToDelete(note);
+    setShowDeleteNoteModal(true);
+  };
+
+  const openRenameNoteModal = (note: Note) => {
+    setNoteToRename(note);
+    setNewNoteTitle(note.title);
+    setShowRenameNoteModal(true);
   };
 
   const handleViewNote = async (note: Note) => {
@@ -418,30 +540,90 @@ export default function NotebookDetail() {
     setViewingNote(null);
   };
 
+  const handlePlayPodcast = (podcast: any) => {
+    const audioUrl = `http://localhost:8001${podcast.audio_url}`;
+    
+    // If the same podcast is already playing, pause it
+    if (playingPodcast === podcast.id && audioElement && !audioElement.paused) {
+      audioElement.pause();
+      setPlayingPodcast(null);
+      return;
+    }
+    
+    // Stop any currently playing audio
+    if (audioElement) {
+      audioElement.pause();
+      audioElement.currentTime = 0;
+    }
+    
+    // Create new audio element
+    const newAudio = new Audio(audioUrl);
+    newAudio.addEventListener('ended', () => {
+      setPlayingPodcast(null);
+      setAudioElement(null);
+    });
+    
+    newAudio.addEventListener('error', (e) => {
+      console.error('Audio playback error:', e);
+      toast({
+        title: "Playback Error",
+        description: "Failed to play podcast audio.",
+        variant: "destructive",
+      });
+      setPlayingPodcast(null);
+      setAudioElement(null);
+    });
+    
+    setAudioElement(newAudio);
+    setPlayingPodcast(podcast.id);
+    newAudio.play();
+  };
+
   const handleGeneratePodcast = async () => {
     if (!id || !podcastPrompt?.trim()) return;
     
     setIsGeneratingPodcast(true);
     try {
       await podcastsAPI.generate({
-        notebook_id: id,
-        prompt: podcastPrompt,
+        template_name: "Deep Dive",
+        notebook_name: notebook?.name || "Unknown",
+        episode_name: `Episode ${new Date().toLocaleString()}`,
+        instructions: podcastPrompt,
+        podcast_length: "Medium (10-20 min)",
       });
       toast({
         title: "Podcast generation started",
         description: "Your podcast is being generated. This may take a few minutes.",
       });
       setPodcastPrompt("");
-      // Poll for updates
+      // Poll for updates - check if new episodes were created
+      const initialCount = podcasts.length;
       const pollInterval = setInterval(async () => {
-        const updatedPodcasts = await podcastsAPI.list(id);
-        setPodcasts(updatedPodcasts);
-        const generatingPodcast = updatedPodcasts.find(p => p.status === 'generating');
-        if (!generatingPodcast) {
+        try {
+          const updatedPodcasts = await podcastsAPI.list(id);
+          setPodcasts(updatedPodcasts);
+          
+          // If we have more episodes than before, generation is complete
+          if (updatedPodcasts.length > initialCount) {
+            clearInterval(pollInterval);
+            setIsGeneratingPodcast(false);
+            toast({
+              title: "Podcast generated successfully!",
+              description: "Your podcast is now available in the Studio panel.",
+            });
+          }
+        } catch (error) {
+          console.error("Error polling for podcasts:", error);
           clearInterval(pollInterval);
           setIsGeneratingPodcast(false);
         }
       }, 3000);
+      
+      // Set a timeout to stop polling after 5 minutes
+      setTimeout(() => {
+        clearInterval(pollInterval);
+        setIsGeneratingPodcast(false);
+      }, 300000);
     } catch (error) {
       toast({
         title: "Generation failed",
@@ -791,23 +973,28 @@ export default function NotebookDetail() {
       </header>
 
       {/* Mobile Tabs Navigation */}
-      <div className="sm:hidden border-b">
+      <div className="sm:hidden border-b animate-slide-in-top">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="sources">Sources</TabsTrigger>
-            <TabsTrigger value="chat">Chat</TabsTrigger>
-            <TabsTrigger value="studio">Studio</TabsTrigger>
+            <TabsTrigger value="sources" className="animate-tab-switch animate-stagger-1">Sources</TabsTrigger>
+            <TabsTrigger value="chat" className="animate-tab-switch animate-stagger-2">Chat</TabsTrigger>
+            <TabsTrigger value="studio" className="animate-tab-switch animate-stagger-3">Studio</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
 
       {/* Desktop Three Panel Layout */}
-      <div className="hidden sm:flex h-[calc(100vh-65px)] gap-3 lg:gap-6 p-3 lg:p-6 bg-gradient-to-br from-background via-background to-muted/20">
+      <div className="hidden sm:flex h-[calc(100vh-65px)] gap-3 lg:gap-6 p-3 lg:p-6 bg-gradient-to-br from-background via-background to-muted/20 animate-layout-transition">
         {/* Left Panel - Sources */}
         {console.log("🔍 NotebookDetail: Rendering left panel - isSourceExpanded:", isSourceExpanded)}
         <div className={cn(
-          "bg-card border border-border/50 transition-all duration-300 flex flex-col rounded-xl shadow-lg hover:shadow-xl backdrop-blur-sm",
-          isSourceExpanded && (isCreatingNote || showPodcastForm) ? "flex-1" : isSourceExpanded ? "w-[500px] lg:w-[600px]" : "w-80 lg:w-96"
+          "bg-card border border-border/50 transition-all duration-500 ease-out flex flex-col rounded-xl shadow-lg hover:shadow-xl backdrop-blur-sm animate-panel-slide-in panel-content",
+          // When both panels are expanded, they share space equally
+          isSourceExpanded && (isCreatingNote || isViewingNote || showPodcastForm) ? "flex-1 animate-panel-expand" : 
+          // When only source panel is expanded
+          isSourceExpanded ? "w-[500px] lg:w-[600px] animate-panel-expand" : 
+          // When source panel is collapsed
+          "w-80 lg:w-96 animate-panel-collapse"
         )}>
           {!isSourceExpanded && (
           <div className="p-3 lg:p-4 border-b">
@@ -818,7 +1005,7 @@ export default function NotebookDetail() {
                     size="sm" 
                     variant="outline"
                     onClick={handleAddSourceClick}
-                    className="transition-all duration-200 hover:scale-105 active:scale-95"
+                    className="transition-all duration-300 hover:scale-105 active:scale-95 hover:shadow-md animate-bounce-in"
                   >
                   <Plus className="h-4 w-4 mr-1" />
                   Add
@@ -827,7 +1014,7 @@ export default function NotebookDetail() {
                   size="sm" 
                     variant="outline"
                     onClick={handleDiscoverClick}
-                    className="transition-all duration-200 hover:scale-105 active:scale-95"
+                    className="transition-all duration-300 hover:scale-105 active:scale-95 hover:shadow-md animate-bounce-in"
                 >
                   Discover
                 </Button>
@@ -851,10 +1038,14 @@ export default function NotebookDetail() {
               <div className="p-4 space-y-1 w-full overflow-hidden">
                   {console.log("🔍 NotebookDetail: Rendering sources - sources.length:", sources.length, "sources:", sources)}
                   {sources.length > 0 ? (
-                    sources.map((source) => (
+                    sources.map((source, index) => (
                   <Card
                     key={source.id}
-                    className="group p-2 cursor-pointer hover:bg-accent/50 transition-colors w-full"
+                    className={cn(
+                      "group p-2 cursor-pointer hover:bg-accent/50 transition-all duration-300 w-full hover:scale-[1.02] hover:shadow-md",
+                      "animate-stagger-in",
+                      `animate-stagger-${Math.min(index + 1, 6)}`
+                    )}
                     onClick={() => handleSourceSelect(source)}
                     onContextMenu={(e) => {
                       e.preventDefault();
@@ -947,17 +1138,16 @@ export default function NotebookDetail() {
                 <div className="flex items-center gap-2">
                   {selectedSource && !showAddSourceForm && !showDiscoverForm && !showSearchResults && (
                     <div className="flex items-center gap-2">
-                      <Select value={selectedTransformation} onValueChange={setSelectedTransformation}>
+                      <Select value={selectedTransformation} onValueChange={setSelectedTransformation} disabled={loadingTransformations}>
                         <SelectTrigger className="w-[180px] h-8">
-                          <SelectValue placeholder="Apply transformation" />
+                          <SelectValue placeholder={loadingTransformations ? "Loading..." : "Apply transformation"} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Analyze Paper">Analyze Paper</SelectItem>
-                          <SelectItem value="Dense Summary">Dense Summary</SelectItem>
-                          <SelectItem value="Key Insights">Key Insights</SelectItem>
-                          <SelectItem value="Reflections">Reflections</SelectItem>
-                          <SelectItem value="Simple Summary">Simple Summary</SelectItem>
-                          <SelectItem value="Table of Contents">Table of Contents</SelectItem>
+                          {transformations.map((t) => (
+                            <SelectItem key={t.id} value={t.name}>
+                              {t.name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <Button 
@@ -1313,16 +1503,21 @@ export default function NotebookDetail() {
         </div>
 
         {/* Middle Panel - Chat */}
-        {!(isSourceExpanded && (isCreatingNote || showPodcastForm)) && (
-        <div className="flex-1 bg-card border border-border/50 rounded-xl shadow-lg hover:shadow-xl backdrop-blur-sm">
+        {!(isSourceExpanded && (isCreatingNote || isViewingNote || showPodcastForm)) && (
+        <div className="flex-1 bg-card border border-border/50 rounded-xl shadow-lg hover:shadow-xl backdrop-blur-sm animate-panel-show animate-stagger-2 panel-content">
             <ChatPanel notebookId={notebook.id} onNoteSaved={loadData} />
         </div>
         )}
 
         {/* Right Panel - Studio */}
         <div className={cn(
-          "bg-card border border-border/50 transition-all duration-300 flex flex-col rounded-xl shadow-lg hover:shadow-xl backdrop-blur-sm",
-          isSourceExpanded && (isCreatingNote || isViewingNote || showPodcastForm) ? "flex-1" : (isCreatingNote || isViewingNote || showPodcastForm) ? "w-[600px]" : "w-96"
+          "bg-card border border-border/50 transition-all duration-500 ease-out flex flex-col rounded-xl shadow-lg hover:shadow-xl backdrop-blur-sm animate-panel-slide-in animate-stagger-3 panel-content",
+          // When both panels are expanded, they share space equally
+          isSourceExpanded && (isCreatingNote || isViewingNote || showPodcastForm) ? "flex-1 animate-panel-expand" : 
+          // When only studio panel is expanded (source panel collapsed)
+          (isCreatingNote || isViewingNote || showPodcastForm) ? "w-[600px] animate-panel-expand" : 
+          // When studio panel is collapsed
+          "w-96 animate-panel-collapse"
         )}>
           {!isCreatingNote && !isViewingNote && !showPodcastForm ? (
             <>
@@ -1332,7 +1527,7 @@ export default function NotebookDetail() {
                 
                 {/* Generate Podcast Button */}
                 <Button 
-                  className="w-full mb-4 bg-primary hover:bg-primary/90"
+                  className="w-full mb-4 bg-primary hover:bg-primary/90 transition-all duration-300 hover:scale-105 active:scale-95 hover:shadow-lg active:shadow-md touch-manipulation"
                   onClick={() => setShowPodcastForm(true)}
                   disabled={isGeneratingPodcast}
                 >
@@ -1342,7 +1537,7 @@ export default function NotebookDetail() {
 
                 {/* Create Note Button */}
                 <Button 
-                  className="w-full mb-4"
+                  className="w-full mb-4 transition-all duration-300 hover:scale-105 active:scale-95 hover:shadow-lg active:shadow-md touch-manipulation"
                   onClick={() => setIsCreatingNote(true)}
                 >
                   <FileText className="h-4 w-4 mr-2" />
@@ -1357,26 +1552,52 @@ export default function NotebookDetail() {
                   {notes.length > 0 && (
                     <div>
                       <div className="space-y-2">
-                        {notes.slice(0, 3).map((note) => (
+                        {notes.map((note, index) => (
                           <div
                             key={note.id}
-                            className="flex items-center justify-between p-2 border border-gray-200 rounded-md bg-white cursor-pointer hover:bg-gray-50 transition-colors"
+                            className={cn(
+                              "flex items-start justify-between p-2 border border-gray-200 rounded-md bg-white cursor-pointer hover:bg-gray-50 transition-all duration-300 gap-2 touch-manipulation",
+                              "hover:scale-[1.02] hover:shadow-md active:scale-95 active:shadow-sm",
+                              "animate-stagger-in",
+                              `animate-stagger-${Math.min(index + 1, 6)}`
+                            )}
                             onClick={() => handleViewNote(note)}
                           >
-                            <span className="text-sm font-medium text-gray-900 truncate">
-                              {note.title}
-                            </span>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                // Handle more options
-                              }}
-                              className="h-6 w-6 text-gray-500 hover:text-gray-700"
-                            >
-                              <MoreHorizontal className="h-3 w-3" />
-                            </Button>
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <div className="flex-shrink-0">
+                                <FileText className="h-4 w-4 text-gray-500" />
+                              </div>
+                              <span className="text-sm font-medium text-gray-900 break-words leading-tight flex-1 min-w-0">
+                                {note.title}
+                              </span>
+                            </div>
+                            <div className="relative">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                  onClick={(e) => e.stopPropagation()}
+                                    className="h-6 w-6 text-gray-500 hover:text-gray-700 transition-all duration-200 hover:scale-110 active:scale-95 touch-manipulation"
+                                  >
+                                    <MoreVertical className="h-3 w-3" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="z-[9999] min-w-[160px]">
+                                  <DropdownMenuItem                                   onClick={() => openRenameNoteModal(note)}>
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Rename
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                  onClick={() => openDeleteModal(note)}
+                                    className="text-destructive focus:text-destructive"
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1388,18 +1609,94 @@ export default function NotebookDetail() {
                     <div>
                       <h3 className="text-sm font-semibold mb-2">Generated Podcasts</h3>
                       <div className="space-y-2">
-                        {podcasts.map((podcast) => (
-                          <Card key={podcast.id} className="p-3">
-                            <div className="flex items-center justify-between">
+                        {podcasts.map((podcast, index) => (
+                          <Card key={podcast.id} className={cn(
+                            "p-3 bg-gray-800 border-gray-700 transition-all duration-300 touch-manipulation",
+                            "hover:scale-[1.02] hover:shadow-lg active:scale-95 active:shadow-md",
+                            "animate-stagger-in",
+                            `animate-stagger-${Math.min(index + 1, 6)}`
+                          )}>
+                            <div className="flex items-center gap-3">
+                              {/* Audio Wave Icon */}
+                              <div className="flex-shrink-0 relative">
+                                <div className="flex items-center space-x-1">
+                                  <div className="w-1 h-3 bg-purple-400 rounded-full"></div>
+                                  <div className="w-1 h-5 bg-purple-400 rounded-full"></div>
+                                  <div className="w-1 h-2 bg-purple-400 rounded-full"></div>
+                                  <div className="w-1 h-4 bg-purple-400 rounded-full"></div>
+                                  <div className="w-1 h-3 bg-purple-400 rounded-full"></div>
+                                </div>
+                                <div className="absolute -top-1 -right-1">
+                                  <div className="w-2 h-2 bg-purple-400 rounded-full opacity-80"></div>
+                                </div>
+                              </div>
+                              
+                              {/* Title and Metadata */}
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm truncate">{podcast.title}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {podcast.duration} • {new Date(podcast.created_at).toLocaleDateString()}
+                                <p className="font-medium text-sm text-gray-200 leading-tight break-words truncate">
+                                  {podcast.name || podcast.title}
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                  {podcast.duration ? `${Math.round(podcast.duration / 60)}:${String(Math.round(podcast.duration % 60)).padStart(2, '0')}` : 'Unknown'} • {new Date(podcast.created || podcast.created_at).toLocaleDateString()}
                                 </p>
                               </div>
-                              <Button size="icon" variant="ghost" className="h-6 w-6">
-                                <AudioLines className="h-3 w-3" />
-                              </Button>
+                              
+                              {/* Action Buttons */}
+                              <div className="flex items-center gap-2">
+                                <Button 
+                                  size="icon" 
+                                  variant="ghost" 
+                                  className="h-8 w-8 flex-shrink-0 text-purple-400 hover:text-purple-300 hover:bg-gray-700 transition-all duration-200 hover:scale-110 active:scale-95 touch-manipulation"
+                                  onClick={() => handlePlayPodcast(podcast)}
+                                >
+                                  {playingPodcast === podcast.id ? (
+                                    <Pause className="h-4 w-4" />
+                                  ) : (
+                                    <Play className="h-4 w-4" />
+                                  )}
+                                </Button>
+                                
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button 
+                                      size="icon" 
+                                      variant="ghost" 
+                                      className="h-8 w-8 flex-shrink-0 text-purple-400 hover:text-purple-300 hover:bg-gray-700 transition-all duration-200 hover:scale-110 active:scale-95 touch-manipulation"
+                                    >
+                                      <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="bg-gray-800 border-gray-700">
+                                    <DropdownMenuItem 
+                                      className="text-gray-200 hover:bg-gray-700"
+                                      onClick={() => {
+                                        const audioUrl = `http://localhost:8001${podcast.audio_url}`;
+                                        const link = document.createElement('a');
+                                        link.href = audioUrl;
+                                        link.download = `${podcast.name || podcast.title}.mp3`;
+                                        link.click();
+                                      }}
+                                    >
+                                      <Download className="mr-2 h-4 w-4" />
+                                      Download
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      className="text-red-400 hover:bg-gray-700"
+                                      onClick={() => {
+                                        if (confirm('Are you sure you want to delete this podcast?')) {
+                                          podcastsAPI.delete(podcast.id).then(() => {
+                                            loadData();
+                                            toast({ title: "Podcast deleted successfully" });
+                                          });
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
                             </div>
                           </Card>
                         ))}
@@ -1449,11 +1746,17 @@ export default function NotebookDetail() {
                       className="w-full px-3 py-2 rounded-lg border bg-background/50"
                       value={podcastSettings.template}
                       onChange={(e) => setPodcastSettings({...podcastSettings, template: e.target.value})}
+                      disabled={loadingPodcastTemplates}
                     >
-                      <option value="Deep Dive - get into it">Deep Dive - get into it</option>
-                      <option value="Quick Summary">Quick Summary</option>
-                      <option value="Educational">Educational</option>
-                      <option value="Conversational">Conversational</option>
+                      {loadingPodcastTemplates ? (
+                        <option value="">Loading templates...</option>
+                      ) : (
+                        podcastTemplates.map((template) => (
+                          <option key={template.name} value={template.name}>
+                            {template.name}
+                          </option>
+                        ))
+                      )}
                     </select>
                   </div>
 
@@ -1533,8 +1836,11 @@ export default function NotebookDetail() {
                       setIsGeneratingPodcast(true);
                       try {
                         await podcastsAPI.generate({
-                          notebook_id: id!,
-                          prompt: `Episode: ${podcastSettings.episodeName}, Template: ${podcastSettings.template}, Length: ${podcastSettings.length}`,
+                          template_name: podcastSettings.template,
+                          notebook_name: notebook?.name || "Unknown",
+                          episode_name: podcastSettings.episodeName,
+                          instructions: `Generate a ${podcastSettings.length} podcast episode`,
+                          podcast_length: podcastSettings.length,
                         });
                         toast({
                           title: "Podcast generation started",
@@ -1543,21 +1849,39 @@ export default function NotebookDetail() {
                         setShowPodcastForm(false);
                         setPodcastSettings({
                           episodeName: "",
-                          template: "Deep Dive - get into it",
+                          template: "Deep Dive",
                           length: "Short (5-10 min)",
                           maxChunks: 5,
                           minChunkSize: 3
                         });
-                        // Poll for updates
+                        // Poll for updates - check if new episodes were created
+                        const initialCount = podcasts.length;
                         const pollInterval = setInterval(async () => {
-                          const updatedPodcasts = await podcastsAPI.list(id!);
-                          setPodcasts(updatedPodcasts);
-                          const generatingPodcast = updatedPodcasts.find(p => p.status === 'generating');
-                          if (!generatingPodcast) {
+                          try {
+                            const updatedPodcasts = await podcastsAPI.list(id!);
+                            setPodcasts(updatedPodcasts);
+                            
+                            // If we have more episodes than before, generation is complete
+                            if (updatedPodcasts.length > initialCount) {
+                              clearInterval(pollInterval);
+                              setIsGeneratingPodcast(false);
+                              toast({
+                                title: "Podcast generated successfully!",
+                                description: "Your podcast is now available in the Studio panel.",
+                              });
+                            }
+                          } catch (error) {
+                            console.error("Error polling for podcasts:", error);
                             clearInterval(pollInterval);
                             setIsGeneratingPodcast(false);
                           }
                         }, 3000);
+                        
+                        // Set a timeout to stop polling after 5 minutes
+                        setTimeout(() => {
+                          clearInterval(pollInterval);
+                          setIsGeneratingPodcast(false);
+                        }, 300000);
                       } catch (error) {
                         toast({
                           title: "Generation failed",
@@ -1695,40 +2019,41 @@ export default function NotebookDetail() {
       {/* Mobile Content - Unified Layout */}
       <div className="sm:hidden">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsContent value="sources" className="mt-0 h-[calc(100vh-200px)] overflow-hidden rounded-xl">
+          <TabsContent value="sources" className="mt-0 h-[calc(100vh-120px)] overflow-hidden">
             <div className="flex flex-col h-full">
               {/* Sources Panel Header - Only show when not expanded */}
               {!isSourceExpanded && (
-                <div className="p-4 space-y-4 border-b bg-background/50">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Sources</h2>
-              <div className="flex gap-2">
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={handleAddSourceClick}
-                    className="transition-all duration-200 hover:scale-105 active:scale-95"
-                  >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add
-                </Button>
-                <Button 
-                  size="sm" 
-                    variant="outline"
-                    onClick={handleDiscoverClick}
-                    className="transition-all duration-200 hover:scale-105 active:scale-95"
-                >
-                  Discover
-                </Button>
-              </div>
-            </div>
-            <input
-              type="text"
-              placeholder="Search sources..."
+                <div className="p-3 sm:p-4 space-y-3 border-b bg-background/50">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-base sm:text-lg font-semibold">Sources</h2>
+                    <div className="flex gap-1 sm:gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={handleAddSourceClick}
+                        className="transition-all duration-200 hover:scale-105 active:scale-95 text-xs sm:text-sm px-2 sm:px-3"
+                      >
+                        <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                        <span className="hidden sm:inline">Add</span>
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={handleDiscoverClick}
+                        className="transition-all duration-200 hover:scale-105 active:scale-95 text-xs sm:text-sm px-2 sm:px-3"
+                      >
+                        <span className="hidden sm:inline">Discover</span>
+                        <span className="sm:hidden">Find</span>
+                      </Button>
+                    </div>
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Search sources..."
                     className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
                 </div>
               )}
 
@@ -1859,51 +2184,60 @@ export default function NotebookDetail() {
 
               {/* Source Content - Show when source is selected */}
               {selectedSource && (
-                <div className="p-4 border-b bg-muted/30">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-semibold truncate">{selectedSource.title}</h3>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-2">
-                        <Select value={selectedTransformation} onValueChange={setSelectedTransformation}>
-                          <SelectTrigger className="w-[160px] h-8">
-                            <SelectValue placeholder="Apply transformation" />
+                <div className="flex-1 flex flex-col bg-background">
+                  {/* Mobile-optimized header */}
+                  <div className="p-3 border-b bg-muted/30">
+                    <div className="space-y-3">
+                      {/* Title and close button row */}
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-semibold truncate text-sm pr-2">{selectedSource.title}</h3>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={handleCloseSourceView}
+                          className="shrink-0 h-8 w-8"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    
+                    {/* Transformation controls - only show when not viewing a specific insight */}
+                    {!selectedInsight && (
+                      <div className="flex flex-col sm:flex-row gap-2 sm:gap-2">
+                        <Select value={selectedTransformation} onValueChange={setSelectedTransformation} disabled={loadingTransformations}>
+                          <SelectTrigger className="w-full sm:w-[140px] h-8 text-xs sm:text-sm">
+                            <SelectValue placeholder={loadingTransformations ? "Loading..." : "Apply transformation"} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Analyze Paper">Analyze Paper</SelectItem>
-                            <SelectItem value="Dense Summary">Dense Summary</SelectItem>
-                            <SelectItem value="Key Insights">Key Insights</SelectItem>
-                            <SelectItem value="Reflections">Reflections</SelectItem>
-                            <SelectItem value="Simple Summary">Simple Summary</SelectItem>
-                            <SelectItem value="Table of Contents">Table of Contents</SelectItem>
+                            {transformations.map((t) => (
+                              <SelectItem key={t.id} value={t.name}>
+                                {t.name}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <Button
                           onClick={handleTransformationRun}
                           disabled={!selectedTransformation}
                           size="sm"
-                          className="h-8"
+                          className="h-8 text-xs sm:text-sm"
                         >
                           <Play className="h-3 w-3 mr-1" />
                           Run
                         </Button>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleCloseSourceView}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    )}
                   </div>
 
+                  </div>
+                  
                   {/* Individual Insights */}
                   {selectedSource?.insights && selectedSource.insights.length > 0 && (
-                    <div className="space-y-2 mb-3 w-full max-w-full flex-1 flex flex-col">
+                    <div className="flex-1 flex flex-col">
                       {selectedInsight ? (
                         // Show selected insight content
-                        <div className="w-full max-w-full flex-1 flex flex-col">
-                          <div className="flex items-center gap-2 mb-2 flex-shrink-0 -mt-1 -ml-2">
+                        <div className="flex-1 flex flex-col">
+                          <div className="flex items-center gap-2 p-3 border-b bg-muted/20">
                             <Button
                               onClick={handleBackToInsights}
                               variant="ghost"
@@ -1917,51 +2251,53 @@ export default function NotebookDetail() {
                               {selectedInsight.insight_type || selectedInsight.type || 'Insight'}
                             </h3>
                           </div>
-                          <div className="w-full max-w-full relative" style={{ height: 'calc(100vh - 380px)' }}>
-                            <div className="h-full overflow-y-auto w-full max-w-full border border-primary/20 rounded-lg bg-primary/5">
-                              <div className="p-2 pb-16">
-                                <p className="text-sm whitespace-pre-wrap break-words w-full max-w-full overflow-x-hidden">
+                          <div className="flex-1 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
+                            <div className="p-4 pb-8">
+                              <div className="prose prose-sm max-w-none">
+                                <div className="text-sm whitespace-pre-wrap break-words leading-relaxed space-y-3">
                                   {selectedInsight.content}
-                                </p>
+                                </div>
                               </div>
                             </div>
-                            <div className="absolute bottom-0 left-0 right-0 p-2 pb-3 bg-primary/5 border-t border-primary/20 rounded-b-lg">
-                              <Button
-                                onClick={() => handleSaveAsNote(selectedInsight.insight_type || selectedInsight.type || 'Insight', selectedInsight.content)}
-                                size="sm"
-                                variant="outline"
-                                className="w-full max-w-full"
-                              >
-                                <FileText className="h-4 w-4 mr-2" />
-                                Save as Note
-                              </Button>
-                            </div>
+                          </div>
+                          <div className="p-3 border-t bg-muted/20">
+                            <Button
+                              onClick={() => handleSaveAsNote(selectedInsight.insight_type || selectedInsight.type || 'Insight', selectedInsight.content)}
+                              size="sm"
+                              variant="outline"
+                              className="w-full"
+                            >
+                              <FileText className="h-4 w-4 mr-2" />
+                              Save as Note
+                            </Button>
                           </div>
                         </div>
                       ) : (
                         // Show insights list
-                        <>
-                          <h3 className="font-semibold text-sm text-primary flex items-center gap-2">
-                            <Sparkles className="h-4 w-4" />
-                            Transformation Insights ({selectedSource.insights.length})
-                          </h3>
-                          <div className="space-y-2 w-full max-w-full">
-                            {selectedSource.insights.map((insight, index) => (
-                              <div 
-                                key={insight.id || index} 
-                                className="w-full max-w-full p-2 bg-primary/5 border border-primary/20 rounded-lg cursor-pointer hover:bg-primary/10 transition-colors"
-                                onClick={() => handleInsightSelect(insight)}
-                              >
-                                <div className="flex items-center justify-between w-full max-w-full">
-                                  <span className="font-semibold text-sm text-primary truncate flex-1 mr-2 min-w-0 max-w-full">
-                                    {insight.insight_type || insight.type || `Insight ${index + 1}`}
-                                  </span>
-                                  <span className="text-primary/60 flex-shrink-0">→</span>
+                        <div className="flex-1 overflow-y-auto">
+                          <div className="p-4">
+                            <h3 className="font-semibold text-sm text-primary flex items-center gap-2 mb-3">
+                              <Sparkles className="h-4 w-4" />
+                              Transformation Insights ({selectedSource.insights.length})
+                            </h3>
+                            <div className="space-y-2">
+                              {selectedSource.insights.map((insight, index) => (
+                                <div 
+                                  key={insight.id || index} 
+                                  className="p-3 bg-primary/5 border border-primary/20 rounded-lg cursor-pointer hover:bg-primary/10 transition-colors"
+                                  onClick={() => handleInsightSelect(insight)}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-semibold text-sm text-primary truncate flex-1 mr-2">
+                                      {insight.insight_type || insight.type || `Insight ${index + 1}`}
+                                    </span>
+                                    <span className="text-primary/60 flex-shrink-0">→</span>
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              ))}
+                            </div>
                           </div>
-                        </>
+                        </div>
                       )}
                     </div>
                   )}
@@ -1973,35 +2309,35 @@ export default function NotebookDetail() {
               {console.log("🔍 NotebookDetail Mobile: isSourceExpanded:", isSourceExpanded, "Will render mobile sources list?")}
               {!isSourceExpanded && (
                 <div className="flex-1 overflow-y-auto">
-                  <div className="p-4 w-full overflow-hidden">
-            <div className="space-y-2 w-full">
-              {console.log("🔍 NotebookDetail Mobile: Rendering sources - sources.length:", sources.length, "sources:", sources)}
-              {sources.length > 0 ? (
-                sources.map((source) => (
-                  <Card
-                    key={source.id}
-                    className="group p-3 cursor-pointer hover:bg-accent/50 transition-colors w-full"
-                    onClick={() => handleSourceSelect(source)}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      openRenameModal(source);
-                    }}
-                  >
-                            <div className="flex items-start gap-2 w-full">
-                      <div className="flex-shrink-0">
-                        <span className="text-lg">{getSourceIcon(source.type)}</span>
-                      </div>
-                      <div className="flex-1 min-w-0 overflow-hidden">
-                                    <p className="font-medium text-sm truncate mb-1" title={source.title}>
-                                      {source.title}
-                                    </p>
-                                  <p className="text-xs text-muted-foreground line-clamp-2 mb-1">
-                                    {source.content || "No content available"}
-                                  </p>
-                                  <p className="text-xs text-muted-foreground">
-                          {new Date(source.created || source.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
+                  <div className="p-3 sm:p-4 w-full overflow-hidden">
+                    <div className="space-y-2 w-full">
+                      {console.log("🔍 NotebookDetail Mobile: Rendering sources - sources.length:", sources.length, "sources:", sources)}
+                      {sources.length > 0 ? (
+                        sources.map((source) => (
+                          <Card
+                            key={source.id}
+                            className="group p-3 cursor-pointer hover:bg-accent/50 transition-colors w-full"
+                            onClick={() => handleSourceSelect(source)}
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                              openRenameModal(source);
+                            }}
+                          >
+                            <div className="flex items-start gap-3 w-full">
+                              <div className="flex-shrink-0 mt-0.5">
+                                <span className="text-lg">{getSourceIcon(source.type)}</span>
+                              </div>
+                              <div className="flex-1 min-w-0 overflow-hidden">
+                                <p className="font-medium text-sm break-words leading-tight mb-1" title={source.title}>
+                                  {source.title}
+                                </p>
+                                <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                                  {source.content || "No content available"}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(source.created || source.created_at).toLocaleDateString()}
+                                </p>
+                              </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button 
@@ -2077,7 +2413,7 @@ export default function NotebookDetail() {
             
                   {/* Generate Podcast Button */}
                 <Button 
-                    className="w-full mb-4 bg-primary hover:bg-primary/90"
+                    className="w-full mb-4 bg-primary hover:bg-primary/90 transition-all duration-300 hover:scale-105 active:scale-95 hover:shadow-lg active:shadow-md touch-manipulation touch-target"
                     onClick={() => setShowPodcastForm(true)}
                     disabled={isGeneratingPodcast}
                   >
@@ -2087,7 +2423,7 @@ export default function NotebookDetail() {
 
             {/* Create Note Button */}
             <Button 
-                    className="w-full mb-4"
+                    className="w-full mb-4 transition-all duration-300 hover:scale-105 active:scale-95 hover:shadow-lg active:shadow-md touch-manipulation touch-target"
               onClick={() => setIsCreatingNote(true)}
             >
               <FileText className="h-4 w-4 mr-2" />
@@ -2135,11 +2471,17 @@ export default function NotebookDetail() {
                         className="w-full px-3 py-2 rounded-lg border bg-background/50 text-sm"
                         value={podcastSettings.template}
                         onChange={(e) => setPodcastSettings({...podcastSettings, template: e.target.value})}
+                        disabled={loadingPodcastTemplates}
                       >
-                        <option value="Deep Dive - get into it">Deep Dive - get into it</option>
-                        <option value="Quick Summary">Quick Summary</option>
-                        <option value="Educational">Educational</option>
-                        <option value="Conversational">Conversational</option>
+                        {loadingPodcastTemplates ? (
+                          <option value="">Loading templates...</option>
+                        ) : (
+                          podcastTemplates.map((template) => (
+                            <option key={template.name} value={template.name}>
+                              {template.name}
+                            </option>
+                          ))
+                        )}
                       </select>
                     </div>
 
@@ -2219,8 +2561,11 @@ export default function NotebookDetail() {
                         setIsGeneratingPodcast(true);
                         try {
                           await podcastsAPI.generate({
-                            notebook_id: id!,
-                            prompt: `Episode: ${podcastSettings.episodeName}, Template: ${podcastSettings.template}, Length: ${podcastSettings.length}`,
+                            template_name: podcastSettings.template,
+                            notebook_name: notebook?.name || "Unknown",
+                            episode_name: podcastSettings.episodeName,
+                            instructions: `Generate a ${podcastSettings.length} podcast episode`,
+                            podcast_length: podcastSettings.length,
                           });
                           toast({
                             title: "Podcast generation started",
@@ -2229,21 +2574,39 @@ export default function NotebookDetail() {
                           setShowPodcastForm(false);
                           setPodcastSettings({
                             episodeName: "",
-                            template: "Deep Dive - get into it",
+                            template: "Deep Dive",
                             length: "Short (5-10 min)",
                             maxChunks: 5,
                             minChunkSize: 3
                           });
-                          // Poll for updates
+                          // Poll for updates - check if new episodes were created
+                          const initialCount = podcasts.length;
                           const pollInterval = setInterval(async () => {
-                            const updatedPodcasts = await podcastsAPI.list(id!);
-                            setPodcasts(updatedPodcasts);
-                            const generatingPodcast = updatedPodcasts.find(p => p.status === 'generating');
-                            if (!generatingPodcast) {
+                            try {
+                              const updatedPodcasts = await podcastsAPI.list(id!);
+                              setPodcasts(updatedPodcasts);
+                              
+                              // If we have more episodes than before, generation is complete
+                              if (updatedPodcasts.length > initialCount) {
+                                clearInterval(pollInterval);
+                                setIsGeneratingPodcast(false);
+                                toast({
+                                  title: "Podcast generated successfully!",
+                                  description: "Your podcast is now available in the Studio panel.",
+                                });
+                              }
+                            } catch (error) {
+                              console.error("Error polling for podcasts:", error);
                               clearInterval(pollInterval);
                               setIsGeneratingPodcast(false);
                             }
                           }, 3000);
+                          
+                          // Set a timeout to stop polling after 5 minutes
+                          setTimeout(() => {
+                            clearInterval(pollInterval);
+                            setIsGeneratingPodcast(false);
+                          }, 300000);
                         } catch (error) {
                           toast({
                             title: "Generation failed",
@@ -2385,15 +2748,20 @@ export default function NotebookDetail() {
               {notes.length > 0 ? (
                 <div>
                   <div className="space-y-2">
-                    {notes.slice(0, 3).map((note) => (
+                    {notes.map((note) => (
                       <div
                         key={note.id}
-                          className="flex items-center justify-between p-2 border border-gray-200 rounded-md bg-white cursor-pointer hover:bg-gray-50 transition-colors"
+                          className="flex items-start justify-between p-2 border border-gray-200 rounded-md bg-white cursor-pointer hover:bg-gray-50 transition-colors gap-2"
                         onClick={() => handleViewNote(note)}
                       >
-                        <span className="text-xs font-medium text-gray-900 truncate">
-                          {note.title}
-                        </span>
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <div className="flex-shrink-0">
+                            <FileText className="h-4 w-4 text-gray-500" />
+                          </div>
+                          <span className="text-xs font-medium text-gray-900 break-words leading-tight flex-1 min-w-0">
+                            {note.title}
+                          </span>
+                        </div>
                         <Button
                           size="icon"
                           variant="ghost"
@@ -2422,17 +2790,88 @@ export default function NotebookDetail() {
                   <h3 className="text-sm font-semibold mb-2">Generated Podcasts</h3>
                   <div className="space-y-2">
                     {podcasts.map((podcast) => (
-                      <Card key={podcast.id} className="p-3">
-                        <div className="flex items-center justify-between">
+                      <Card key={podcast.id} className="p-3 bg-gray-800 border-gray-700">
+                        <div className="flex items-center gap-3">
+                          {/* Audio Wave Icon */}
+                          <div className="flex-shrink-0 relative">
+                            <div className="flex items-center space-x-1">
+                              <div className="w-1 h-3 bg-purple-400 rounded-full"></div>
+                              <div className="w-1 h-5 bg-purple-400 rounded-full"></div>
+                              <div className="w-1 h-2 bg-purple-400 rounded-full"></div>
+                              <div className="w-1 h-4 bg-purple-400 rounded-full"></div>
+                              <div className="w-1 h-3 bg-purple-400 rounded-full"></div>
+                            </div>
+                            <div className="absolute -top-1 -right-1">
+                              <div className="w-2 h-2 bg-purple-400 rounded-full opacity-80"></div>
+                            </div>
+                          </div>
+                          
+                          {/* Title and Metadata */}
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{podcast.title}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {podcast.duration} • {new Date(podcast.created_at).toLocaleDateString()}
+                            <p className="font-medium text-sm text-gray-200 leading-tight break-words truncate">
+                              {podcast.name || podcast.title}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">
+                              {podcast.duration ? `${Math.round(podcast.duration / 60)}:${String(Math.round(podcast.duration % 60)).padStart(2, '0')}` : 'Unknown'} • {new Date(podcast.created || podcast.created_at).toLocaleDateString()}
                             </p>
                           </div>
-                          <Button size="icon" variant="ghost" className="h-6 w-6">
-                            <AudioLines className="h-3 w-3" />
-                          </Button>
+                          
+                          {/* Action Buttons */}
+                          <div className="flex items-center gap-2">
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              className="h-8 w-8 flex-shrink-0 text-purple-400 hover:text-purple-300 hover:bg-gray-700"
+                              onClick={() => handlePlayPodcast(podcast)}
+                            >
+                              {playingPodcast === podcast.id ? (
+                                <Pause className="h-4 w-4" />
+                              ) : (
+                                <Play className="h-4 w-4" />
+                              )}
+                            </Button>
+                            
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button 
+                                  size="icon" 
+                                  variant="ghost" 
+                                  className="h-8 w-8 flex-shrink-0 text-purple-400 hover:text-purple-300 hover:bg-gray-700"
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-gray-800 border-gray-700">
+                                <DropdownMenuItem 
+                                  className="text-gray-200 hover:bg-gray-700"
+                                  onClick={() => {
+                                    const audioUrl = `http://localhost:8001${podcast.audio_url}`;
+                                    const link = document.createElement('a');
+                                    link.href = audioUrl;
+                                    link.download = `${podcast.name || podcast.title}.mp3`;
+                                    link.click();
+                                  }}
+                                >
+                                  <Download className="mr-2 h-4 w-4" />
+                                  Download
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  className="text-red-400 hover:bg-gray-700"
+                                  onClick={() => {
+                                    if (confirm('Are you sure you want to delete this podcast?')) {
+                                      podcastsAPI.delete(podcast.id).then(() => {
+                                        loadData();
+                                        toast({ title: "Podcast deleted successfully" });
+                                      });
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </div>
                       </Card>
                     ))}
@@ -2645,6 +3084,77 @@ export default function NotebookDetail() {
           </div>
         </div>
       )}
+
+      {/* Delete Note Dialog */}
+      <Dialog open={showDeleteNoteModal} onOpenChange={setShowDeleteNoteModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Note</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{noteToDelete?.title}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDeleteNoteModal(false);
+                setNoteToDelete(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => noteToDelete && handleDeleteNote(noteToDelete.id)}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rename Note Dialog */}
+      <Dialog open={showRenameNoteModal} onOpenChange={setShowRenameNoteModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename {noteToRename?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="note-title">Note name*</Label>
+            <Input
+              id="note-title"
+              value={newNoteTitle}
+              onChange={(e) => setNewNoteTitle(e.target.value)}
+              placeholder="Enter new title..."
+              className="mt-2"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleRenameNote();
+                }
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowRenameNoteModal(false);
+                setNoteToRename(null);
+                setNewNoteTitle("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRenameNote}
+              disabled={!newNoteTitle.trim()}
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
