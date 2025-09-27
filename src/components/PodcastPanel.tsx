@@ -99,7 +99,7 @@ export function PodcastPanel({ notebookId, notebookName }: PodcastPanelProps) {
       
       await podcastsAPI.generate({
         template_name: selectedTemplate,
-        notebook_name: notebookId, // Assuming notebookId is the notebook name
+        notebook_name: notebookName || notebookId, // Use notebookName if available, fallback to notebookId
         episode_name: episodeName,
         instructions: prompt,
         podcast_length: podcastLength,
@@ -112,7 +112,10 @@ export function PodcastPanel({ notebookId, notebookName }: PodcastPanelProps) {
       
       setPrompt("");
       
-      // Poll for updates
+      // Immediately refresh to show the new podcast if it's generated quickly
+      setTimeout(loadPodcasts, 1000);
+      
+      // Also poll for updates after a longer delay
       setTimeout(loadPodcasts, 5000);
     } catch (error) {
       toast({

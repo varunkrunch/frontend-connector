@@ -160,8 +160,21 @@ export function SourcesPanel({ notebookId, notebookName }: SourcesPanelProps) {
         setSourceInsights(source.insights);
         console.log("✅ SourcesPanel: Loaded", source.insights.length, "insights from source object");
       } else {
-        setSourceInsights([]);
-        console.log("ℹ️ SourcesPanel: No insights found in source object");
+        // If no insights in the source object, try to fetch them directly from the API
+        console.log("ℹ️ SourcesPanel: No insights in source object, fetching from API...");
+        try {
+          const sourceDetails = await sourcesAPI.getByTitle(source.title);
+          if (sourceDetails && sourceDetails.insights && Array.isArray(sourceDetails.insights)) {
+            setSourceInsights(sourceDetails.insights);
+            console.log("✅ SourcesPanel: Loaded", sourceDetails.insights.length, "insights from API");
+          } else {
+            setSourceInsights([]);
+            console.log("ℹ️ SourcesPanel: No insights found in API response");
+          }
+        } catch (apiError) {
+          console.error("❌ SourcesPanel: Error fetching insights from API:", apiError);
+          setSourceInsights([]);
+        }
       }
     } catch (error) {
       console.error("❌ SourcesPanel: Error loading insights:", error);
@@ -387,14 +400,45 @@ export function SourcesPanel({ notebookId, notebookName }: SourcesPanelProps) {
         description: `Applied ${transformation} transformation successfully.`,
       });
       
-      // Reload sources to get updated insights
+      // Immediately update the selected source with the new insight from the transformation result
+      if (result && result.results && result.results.length > 0) {
+        const transformationResult = result.results[0];
+        if (transformationResult.success && transformationResult.output) {
+          // Create a new insight object from the transformation result
+          const newInsight = {
+            id: `temp_${Date.now()}`, // Temporary ID
+            insight_type: transformation,
+            content: transformationResult.output,
+            created: new Date().toISOString(),
+            updated: new Date().toISOString(),
+          };
+          
+          // Add the new insight to the current source's insights
+          const updatedSource = {
+            ...selectedSource,
+            insights: [...(selectedSource.insights || []), newInsight]
+          };
+          
+          // Update the selected source state immediately
+          setSelectedSource(updatedSource);
+          
+          // Update the insights display immediately
+          setSourceInsights(updatedSource.insights || []);
+          
+          console.log("✅ SourcesPanel: Updated source with new insight immediately");
+        }
+      }
+      
+      // Also reload sources to get the latest data from the backend
       const updatedSources = await loadSources();
       
-      // Reload insights for the current source (from the updated source object)
+      // Update the selected source with the latest data from backend
       if (selectedSource && updatedSources) {
-        const updatedSource = updatedSources.find(s => s.title === selectedSource.title);
-        if (updatedSource) {
-          await loadSourceInsights(updatedSource);
+        const backendUpdatedSource = updatedSources.find(s => s.title === selectedSource.title);
+        if (backendUpdatedSource) {
+          setSelectedSource(backendUpdatedSource);
+          setSourceInsights(backendUpdatedSource.insights || []);
+          console.log("✅ SourcesPanel: Updated source with backend data");
         }
       }
       
@@ -453,25 +497,55 @@ export function SourcesPanel({ notebookId, notebookName }: SourcesPanelProps) {
     if (!selectedSource) return;
     
     try {
+      console.log("🗑️ SourcesPanel: Deleting source:", selectedSource.title, "ID:", selectedSource.id);
+      
       // Use the source ID for delete if title is empty, otherwise use title
+      let deleteResult;
       if (selectedSource.title && selectedSource.title.trim()) {
-        await sourcesAPI.deleteByTitle(selectedSource.title);
+        console.log("🗑️ Using deleteByTitle for:", selectedSource.title);
+        deleteResult = await sourcesAPI.deleteByTitle(selectedSource.title);
       } else {
-        await sourcesAPI.delete(selectedSource.id);
+        console.log("🗑️ Using delete by ID for:", selectedSource.id);
+        deleteResult = await sourcesAPI.delete(selectedSource.id);
       }
+      
+      console.log("✅ SourcesPanel: Delete result:", deleteResult);
+      
       toast({
         title: "Source deleted",
-        description: `Source "${selectedSource.title || 'Untitled'}" has been deleted.`,
+        description: `Source "${selectedSource.title || 'Untitled'}" has been deleted successfully.`,
       });
+      
+      // Clear the selected source and related state
       setSelectedSource(null);
+      setSourceInsights([]);
       setTransformationResult("");
+      setTransformationError("");
       setShowDeleteConfirm(false);
-      await loadSources(); // Reload to get updated data
+      
+      // Reload sources to get updated data
+      await loadSources();
+      
+      console.log("✅ SourcesPanel: Source deletion completed successfully");
+      
     } catch (error) {
       console.error("❌ SourcesPanel: Error deleting source:", error);
+      
+      // Provide more specific error messages
+      let errorMessage = "Failed to delete source. Please try again.";
+      if (error.message) {
+        if (error.message.includes("not found")) {
+          errorMessage = "Source not found. It may have already been deleted.";
+        } else if (error.message.includes("Internal server error")) {
+          errorMessage = "Server error occurred. Please try again later.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Delete failed",
-        description: "Failed to delete source. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     }

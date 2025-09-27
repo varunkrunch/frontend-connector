@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ArrowLeft, Download, Trash2, Minimize2, AudioLines, Video, Network, FileBarChart, Plus, FileText, ChevronLeft, Menu, X, Upload, Link, Type, Sparkles, Play, Pause, Edit, MoreVertical, MoreHorizontal, Globe, ExternalLink, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -42,6 +43,8 @@ export default function NotebookDetail() {
   const [showRenameNoteModal, setShowRenameNoteModal] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<Note | null>(null);
   const [noteToRename, setNoteToRename] = useState<Note | null>(null);
+  const [showDeletePodcastModal, setShowDeletePodcastModal] = useState(false);
+  const [podcastToDelete, setPodcastToDelete] = useState<Podcast | null>(null);
   const [newNoteTitle, setNewNoteTitle] = useState("");
   const [activeTab, setActiveTab] = useState("chat");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -301,7 +304,33 @@ export default function NotebookDetail() {
         description: `${selectedTransformation} has been applied successfully.`,
       });
       
-      // Reload sources to get updated insights
+      // Immediately update the selected source with the new insight from the transformation result
+      if (result && result.results && result.results.length > 0) {
+        const transformationResult = result.results[0];
+        if (transformationResult.success && transformationResult.output) {
+          // Create a new insight object from the transformation result
+          const newInsight = {
+            id: `temp_${Date.now()}`, // Temporary ID
+            insight_type: selectedTransformation,
+            content: transformationResult.output,
+            created: new Date().toISOString(),
+            updated: new Date().toISOString(),
+          };
+          
+          // Add the new insight to the current source's insights
+          const updatedSource = {
+            ...selectedSource,
+            insights: [...(selectedSource.insights || []), newInsight]
+          };
+          
+          // Update the selected source state immediately
+          setSelectedSource(updatedSource);
+          
+          console.log("✅ NotebookDetail: Updated source with new insight immediately");
+        }
+      }
+      
+      // Also reload all data to get the latest from the backend
       await loadData();
       
     } catch (error) {
@@ -353,25 +382,54 @@ export default function NotebookDetail() {
     if (!selectedSource) return;
     
     try {
+      console.log("🗑️ NotebookDetail: Deleting source:", selectedSource.title, "ID:", selectedSource.id);
+      
       // Use the source ID for delete if title is empty, otherwise use title
+      let deleteResult;
       if (selectedSource.title && selectedSource.title.trim()) {
-        await sourcesAPI.deleteByTitle(selectedSource.title);
+        console.log("🗑️ Using deleteByTitle for:", selectedSource.title);
+        deleteResult = await sourcesAPI.deleteByTitle(selectedSource.title);
       } else {
-        await sourcesAPI.delete(selectedSource.id);
+        console.log("🗑️ Using delete by ID for:", selectedSource.id);
+        deleteResult = await sourcesAPI.delete(selectedSource.id);
       }
+      
+      console.log("✅ NotebookDetail: Delete result:", deleteResult);
+      
       toast({
         title: "Source deleted",
-        description: `Source "${selectedSource.title || 'Untitled'}" has been deleted.`,
+        description: `Source "${selectedSource.title || 'Untitled'}" has been deleted successfully.`,
       });
+      
+      // Clear the selected source and related state
       setSelectedSource(null);
+      setSelectedInsight(null);
       setTransformationResults({});
       setShowDeleteConfirm(false);
-      await loadData(); // Reload to get updated data
+      
+      // Reload all data to get updated data
+      await loadData();
+      
+      console.log("✅ NotebookDetail: Source deletion completed successfully");
+      
     } catch (error) {
       console.error("❌ NotebookDetail: Error deleting source:", error);
+      
+      // Provide more specific error messages
+      let errorMessage = "Failed to delete source. Please try again.";
+      if (error.message) {
+        if (error.message.includes("not found")) {
+          errorMessage = "Source not found. It may have already been deleted.";
+        } else if (error.message.includes("Internal server error")) {
+          errorMessage = "Server error occurred. Please try again later.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Delete failed",
-        description: "Failed to delete source. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -596,11 +654,22 @@ export default function NotebookDetail() {
         description: "Your podcast is being generated. This may take a few minutes.",
       });
       setPodcastPrompt("");
+      
+      // Immediately refresh to show the new podcast if it's generated quickly
+      setTimeout(async () => {
+        try {
+          const updatedPodcasts = await podcastsAPI.listByNotebookName(notebook?.name || "Unknown");
+          setPodcasts(updatedPodcasts);
+        } catch (error) {
+          console.error("Error refreshing podcasts immediately:", error);
+        }
+      }, 1000);
+      
       // Poll for updates - check if new episodes were created
       const initialCount = podcasts.length;
       const pollInterval = setInterval(async () => {
         try {
-          const updatedPodcasts = await podcastsAPI.list(id);
+          const updatedPodcasts = await podcastsAPI.listByNotebookName(notebook?.name || "Unknown");
           setPodcasts(updatedPodcasts);
           
           // If we have more episodes than before, generation is complete
@@ -811,6 +880,29 @@ export default function NotebookDetail() {
       });
     } finally {
       setIsAddingSource(false);
+    }
+  };
+
+  const handleDeletePodcast = async () => {
+    if (!podcastToDelete) return;
+    
+    try {
+      await podcastsAPI.delete(podcastToDelete.id);
+      toast({
+        title: "Podcast deleted successfully",
+        description: "The podcast has been removed from your notebook.",
+      });
+      await loadData(); // Reload data to update the UI
+    } catch (error) {
+      console.error("Error deleting podcast:", error);
+      toast({
+        title: "Failed to delete podcast",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setShowDeletePodcastModal(false);
+      setPodcastToDelete(null);
     }
   };
 
@@ -1615,12 +1707,8 @@ export default function NotebookDetail() {
                                     <DropdownMenuItem 
                                       className="text-red-400 hover:bg-gray-700"
                                       onClick={() => {
-                                        if (confirm('Are you sure you want to delete this podcast?')) {
-                                          podcastsAPI.delete(podcast.id).then(() => {
-                                            loadData();
-                                            toast({ title: "Podcast deleted successfully" });
-                                          });
-                                        }
+                                        setPodcastToDelete(podcast);
+                                        setShowDeletePodcastModal(true);
                                       }}
                                     >
                                       <Trash2 className="mr-2 h-4 w-4" />
@@ -2790,12 +2878,8 @@ export default function NotebookDetail() {
                                 <DropdownMenuItem 
                                   className="text-red-400 hover:bg-gray-700"
                                   onClick={() => {
-                                    if (confirm('Are you sure you want to delete this podcast?')) {
-                                      podcastsAPI.delete(podcast.id).then(() => {
-                                        loadData();
-                                        toast({ title: "Podcast deleted successfully" });
-                                      });
-                                    }
+                                    setPodcastToDelete(podcast);
+                                    setShowDeletePodcastModal(true);
                                   }}
                                 >
                                   <Trash2 className="mr-2 h-4 w-4" />
@@ -3087,6 +3171,27 @@ export default function NotebookDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Podcast Confirmation Dialog */}
+      <AlertDialog open={showDeletePodcastModal} onOpenChange={setShowDeletePodcastModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Podcast</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{podcastToDelete?.episode_name || 'this podcast'}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeletePodcast}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

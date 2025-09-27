@@ -22,19 +22,42 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
     delete defaultOptions.headers?.['Content-Type'];
   }
 
-  console.log(`🌐 API Request: ${options.method || 'GET'} ${url}`);
   
   try {
     const response = await fetch(url, defaultOptions);
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
-      throw new Error(errorData.detail || `HTTP ${response.status}: ${response.statusText}`);
+      const errorMessage = errorData.detail || `HTTP ${response.status}: ${response.statusText}`;
+      
+      // Add status code to error message for better error handling
+      if (response.status === 404) {
+        throw new Error(`404: ${errorMessage}`);
+      } else if (response.status === 400) {
+        throw new Error(`400: ${errorMessage}`);
+      } else if (response.status === 403) {
+        throw new Error(`403: ${errorMessage}`);
+      } else if (response.status === 500) {
+        throw new Error(`500: ${errorMessage}`);
+      }
+      
+      throw new Error(`${response.status}: ${errorMessage}`);
     }
     
-    return await response.json();
+    // Check if response has content before trying to parse JSON
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      const text = await response.text();
+      if (text.trim()) {
+        return JSON.parse(text);
+      } else {
+        return null;
+      }
+    } else {
+      // For non-JSON responses, return the text
+      return await response.text();
+    }
   } catch (error) {
-    console.error(`❌ API Error: ${endpoint}`, error);
     throw error;
   }
 };
@@ -522,14 +545,62 @@ export const searchAPI = {
 // Models API
 export const modelsAPI = {
   list: async () => {
-    console.log("modelsAPI.list called");
     return await apiRequest('/models');
   },
   
   getProviders: async () => {
-    console.log("modelsAPI.getProviders called");
     return await apiRequest('/models/providers');
   },
+  
+  getDefaults: async () => {
+    return await apiRequest('/models/config/defaults');
+  },
+  
+  updateDefaults: async (defaults: any) => {
+    return await apiRequest('/models/config/defaults', {
+      method: 'PATCH',
+      body: JSON.stringify(defaults)
+    });
+  },
+  
+  create: async (model: any) => {
+    try {
+      return await apiRequest('/models', {
+        method: 'POST',
+        body: JSON.stringify(model)
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('already exists')) {
+        throw new Error(`Model with name '${model.name}', provider '${model.provider}', and type '${model.type}' already exists`);
+      }
+      throw error;
+    }
+  },
+  
+  delete: async (modelId: string) => {
+    return await apiRequest(`/models/${modelId}`, {
+      method: 'DELETE'
+    });
+  },
+  
+  deleteByTypeAndName: async (modelType: string, provider: string, modelName: string) => {
+    return await apiRequest(`/models/by-type/${modelType}/${provider}/${modelName}`, {
+      method: 'DELETE'
+    });
+  },
+  
+  test: async (modelId: string, testPrompt: string) => {
+    return await apiRequest(`/models/${modelId}/test`, {
+      method: 'POST',
+      body: JSON.stringify({ test_prompt: testPrompt })
+    });
+  },
+  
+  clearCache: async () => {
+    return await apiRequest('/models/cache/clear', {
+      method: 'POST'
+    });
+  }
 };
 
 // Transformations API

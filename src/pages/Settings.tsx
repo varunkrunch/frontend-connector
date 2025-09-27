@@ -9,12 +9,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Info, Save, Mic, Settings as SettingsIcon, Leaf, Plus, MoreHorizontal, Loader2, Edit, Trash2, X } from "lucide-react";
+import { ArrowLeft, Info, Save, Mic, Settings as SettingsIcon, Leaf, Plus, MoreHorizontal, Loader2, Edit, Trash2, X, Star } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { transformationsAPI, podcastsAPI } from "@/services/api";
 import type { Transformation, PodcastTemplate } from "@/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import ModelsTab from "@/components/ModelsTab";
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -85,6 +86,7 @@ Output: [example output]`);
   const [transformations, setTransformations] = useState<Transformation[]>([]);
   const [loadingTransformations, setLoadingTransformations] = useState(true);
   const [errorTransformations, setErrorTransformations] = useState<string | null>(null);
+  const [transformationsUpdateCounter, setTransformationsUpdateCounter] = useState(0);
   
   // Editing state for transformations
   const [editingTransformation, setEditingTransformation] = useState<string | null>(null);
@@ -101,6 +103,7 @@ Output: [example output]`);
   });
   const [savingTransformation, setSavingTransformation] = useState<string | null>(null);
   const [deletingTransformation, setDeletingTransformation] = useState<string | null>(null);
+  const [settingDefaultTransformation, setSettingDefaultTransformation] = useState<string | null>(null);
 
   // Role suggestions
   const roleSuggestions = [
@@ -283,6 +286,7 @@ Output: [example output]`);
         setErrorTransformations(null);
         const data = await transformationsAPI.list('name', 'asc');
         console.log("Fetched transformations:", data);
+        console.log("Transformation apply_default values:", data.map(t => ({ name: t.name, apply_default: t.apply_default })));
         setTransformations(data);
       } catch (error) {
         console.error("Error fetching transformations:", error);
@@ -510,6 +514,75 @@ Output: [example output]`);
       setErrorTransformations(error instanceof Error ? error.message : 'Failed to delete transformation');
     } finally {
       setDeletingTransformation(null);
+    }
+  };
+
+  const handleToggleDefaultTransformation = async (transformation: Transformation) => {
+    try {
+      console.log("🔄 handleToggleDefaultTransformation called for:", transformation.name, "apply_default:", transformation.apply_default);
+      setSettingDefaultTransformation(transformation.id);
+      
+      if (transformation.apply_default) {
+        // Unset as default
+        console.log("🔄 Unsetting default transformation");
+        const result = await transformationsAPI.unsetDefault();
+        console.log("🔄 Unset result:", result);
+        toast({
+          title: "Default transformation unset",
+          description: `${transformation.name} is no longer the default transformation.`,
+        });
+      } else {
+        // Set as default
+        console.log("🔄 Setting default transformation");
+        const result = await transformationsAPI.setDefault(transformation.id);
+        console.log("🔄 Set result:", result);
+        toast({
+          title: "Default transformation set",
+          description: `${transformation.name} is now the default transformation and will be applied to new sources.`,
+        });
+      }
+      
+      // Refresh transformations list to update the apply_default status
+      console.log("🔄 Refreshing transformations list...");
+      const updatedTransformations = await transformationsAPI.list('name', 'asc');
+      console.log("🔄 Updated transformations:", updatedTransformations.map(t => ({ name: t.name, apply_default: t.apply_default })));
+      
+      // Validate that only one transformation is set as default
+      const defaultCount = updatedTransformations.filter(t => t.apply_default).length;
+      console.log("🔄 Default transformations count:", defaultCount);
+      if (defaultCount > 1) {
+        console.warn("⚠️ Multiple transformations set as default! This should not happen.");
+      }
+      
+      // Force a complete state refresh with multiple updates to ensure React detects the change
+      setTransformations([]);
+      setTransformationsUpdateCounter(prev => prev + 1);
+      
+      // Immediate update
+      setTransformations(updatedTransformations);
+      
+      // Additional update after a short delay to ensure the state is properly set
+      setTimeout(() => {
+        setTransformations([...updatedTransformations]);
+        setTransformationsUpdateCounter(prev => prev + 1);
+        console.log("🔄 State updated with new transformations, counter:", transformationsUpdateCounter + 2);
+        
+        // Final check
+        setTimeout(() => {
+          console.log("🔄 Final state check:", transformations.map(t => ({ name: t.name, apply_default: t.apply_default })));
+        }, 50);
+      }, 50);
+      
+    } catch (error) {
+      console.error("❌ Error setting default transformation:", error);
+      console.error("❌ Error details:", error.message || error);
+      toast({
+        title: "Error",
+        description: `Failed to set default transformation: ${error.message || 'Unknown error'}`,
+        variant: "destructive",
+      });
+    } finally {
+      setSettingDefaultTransformation(null);
     }
   };
 
@@ -798,8 +871,13 @@ Output: [example output]`);
 
       {/* Main Content */}
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 max-w-7xl animate-slide-in-bottom">
-        <Tabs defaultValue="transformations" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 h-auto">
+        <Tabs defaultValue="models" className="w-full">
+          <TabsList className="grid w-full grid-cols-3 h-auto">
+            <TabsTrigger value="models" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-3">
+              <SettingsIcon className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden xs:inline">Models</span>
+              <span className="xs:hidden">Models</span>
+            </TabsTrigger>
             <TabsTrigger value="transformations" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 sm:py-3">
               <Leaf className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden xs:inline">Transformations</span>
@@ -811,6 +889,10 @@ Output: [example output]`);
               <span className="xs:hidden">Podcast</span>
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="models" className="mt-4 sm:mt-6">
+            <ModelsTab />
+          </TabsContent>
 
           <TabsContent value="transformations" className="mt-4 sm:mt-6">
             <div className="space-y-4 sm:space-y-6">
@@ -1063,8 +1145,8 @@ Output: [example output]`);
                   )}
 
                   {/* Default Transformations */}
-                  {!loadingTransformations && !errorTransformations && transformations.map((transformation) => (
-                    <div key={transformation.id} className="bg-white border border-border rounded-lg">
+                  {!loadingTransformations && !errorTransformations && transformations.map((transformation, index) => (
+                    <div key={`${transformation.id}-${transformationsUpdateCounter}-${index}`} className="bg-white border border-border rounded-lg">
                       {/* Transformation Header */}
                       <div
                         className="flex items-center justify-between p-4 hover:bg-muted/50 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-sm"
@@ -1178,6 +1260,37 @@ Output: [example output]`);
                                   >
                                     <Edit className="h-4 w-4 mr-2" />
                                     Edit
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant={transformation.apply_default ? "default" : "outline"}
+                                    onClick={(e) => {
+                                      console.log("🔄 Set Default button clicked for:", transformation.name, "apply_default:", transformation.apply_default);
+                                      e.stopPropagation();
+                                      handleToggleDefaultTransformation(transformation);
+                                    }}
+                                    disabled={settingDefaultTransformation === transformation.id}
+                                  >
+                                    {settingDefaultTransformation === transformation.id ? (
+                                      <>
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        {transformation.apply_default ? "Unsetting..." : "Setting..."}
+                                      </>
+                                    ) : (
+                                      <>
+                                        {transformation.apply_default ? (
+                                          <>
+                                            <Star className="h-4 w-4 mr-2 fill-current" />
+                                            Default
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Star className="h-4 w-4 mr-2" />
+                                            Set Default
+                                          </>
+                                        )}
+                                      </>
+                                    )}
                                   </Button>
                                   <Button
                                     size="sm"
