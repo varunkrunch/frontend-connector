@@ -553,11 +553,11 @@ export const modelsAPI = {
   },
   
   getDefaults: async () => {
-    return await apiRequest('/models/config/defaults');
+    return await apiRequest('/config/defaults');
   },
   
   updateDefaults: async (defaults: any) => {
-    return await apiRequest('/models/config/defaults', {
+    return await apiRequest('/config/defaults', {
       method: 'PATCH',
       body: JSON.stringify(defaults)
     });
@@ -579,12 +579,6 @@ export const modelsAPI = {
   
   delete: async (modelId: string) => {
     return await apiRequest(`/models/${modelId}`, {
-      method: 'DELETE'
-    });
-  },
-  
-  deleteByTypeAndName: async (modelType: string, provider: string, modelName: string) => {
-    return await apiRequest(`/models/by-type/${modelType}/${provider}/${modelName}`, {
       method: 'DELETE'
     });
   },
@@ -649,6 +643,20 @@ export const transformationsAPI = {
     return await apiRequest('/transformations', {
       method: 'POST',
       body: JSON.stringify(data),
+    });
+  },
+
+  setDefault: async (id: string) => {
+    console.log("transformationsAPI.setDefault called with id:", id);
+    return await apiRequest(`/transformations/${encodeURIComponent(id)}/set-default`, {
+      method: 'POST',
+    });
+  },
+
+  unsetDefault: async () => {
+    console.log("transformationsAPI.unsetDefault called");
+    return await apiRequest('/transformations/unset-default', {
+      method: 'POST',
     });
   },
 };

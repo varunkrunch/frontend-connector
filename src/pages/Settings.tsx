@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Info, Save, Mic, Settings as SettingsIcon, Leaf, Plus, MoreHorizontal, Loader2, Edit, Trash2, X, Star } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { transformationsAPI, podcastsAPI } from "@/services/api";
+import { transformationsAPI, podcastsAPI, modelsAPI } from "@/services/api";
 import type { Transformation, PodcastTemplate } from "@/types";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import ModelsTab from "@/components/ModelsTab";
@@ -35,8 +35,8 @@ export default function Settings() {
   const [endingMessage, setEndingMessage] = useState("Thank you for listening!");
   const [transcriptModelProvider, setTranscriptModelProvider] = useState("openai");
   const [transcriptModel, setTranscriptModel] = useState("gpt-4o-mini");
-  const [audioModelProvider, setAudioModelProvider] = useState("openai");
-  const [audioModel, setAudioModel] = useState("tts-1");
+  const [audioModelProvider, setAudioModelProvider] = useState("");
+  const [audioModel, setAudioModel] = useState("");
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [existingTemplates, setExistingTemplates] = useState<PodcastTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
@@ -300,6 +300,38 @@ Output: [example output]`);
     fetchExistingTemplates();
   }, []);
 
+  // Fetch default models from Models page configuration
+  useEffect(() => {
+    const fetchDefaultModels = async () => {
+      try {
+        const defaultsData = await modelsAPI.getDefaults();
+        if (defaultsData.default_text_to_speech_model) {
+          // Parse the model ID to get provider and model name
+          const modelId = defaultsData.default_text_to_speech_model;
+          // Model ID format: "model:xxxxx" - we need to get the actual model data
+          const models = await modelsAPI.list();
+          const ttsModel = models.find(m => m.id === modelId);
+          if (ttsModel) {
+            setAudioModelProvider(ttsModel.provider);
+            setAudioModel(ttsModel.name);
+          }
+        }
+        // Fallback to hardcoded defaults if no default TTS model is set
+        if (!audioModelProvider) {
+          setAudioModelProvider("openai");
+          setAudioModel("tts-1");
+        }
+      } catch (error) {
+        console.error("Error fetching default models:", error);
+        // Fallback to hardcoded defaults on error
+        setAudioModelProvider("openai");
+        setAudioModel("tts-1");
+      }
+    };
+
+    fetchDefaultModels();
+  }, []);
+
   const handleSave = async () => {
     try {
       setSavingTemplate(true);
@@ -525,7 +557,7 @@ Output: [example output]`);
       if (transformation.apply_default) {
         // Unset as default
         console.log("🔄 Unsetting default transformation");
-        const result = await transformationsAPI.unsetDefault();
+        const result = await (transformationsAPI as any).unsetDefault();
         console.log("🔄 Unset result:", result);
         toast({
           title: "Default transformation unset",
@@ -534,7 +566,7 @@ Output: [example output]`);
       } else {
         // Set as default
         console.log("🔄 Setting default transformation");
-        const result = await transformationsAPI.setDefault(transformation.id);
+        const result = await (transformationsAPI as any).setDefault(transformation.id);
         console.log("🔄 Set result:", result);
         toast({
           title: "Default transformation set",
