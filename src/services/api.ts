@@ -553,13 +553,20 @@ export const modelsAPI = {
   },
   
   getDefaults: async () => {
-    return await apiRequest('/config/defaults');
+    return await apiRequest('/models/config/defaults');
   },
   
   updateDefaults: async (defaults: any) => {
-    return await apiRequest('/config/defaults', {
+    const formData = new FormData();
+    Object.entries(defaults).forEach(([key, value]) => {
+      if (value !== null && value !== undefined) {
+        formData.append(key, String(value));
+      }
+    });
+    
+    return await apiRequest('/models/config/defaults', {
       method: 'PATCH',
-      body: JSON.stringify(defaults)
+      body: formData
     });
   },
   
