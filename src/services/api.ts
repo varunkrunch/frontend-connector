@@ -601,6 +601,12 @@ export const modelsAPI = {
     return await apiRequest('/models/cache/clear', {
       method: 'POST'
     });
+  },
+  
+  deleteByTypeAndName: async (modelType: string, provider: string, modelName: string) => {
+    return await apiRequest(`/models/by-type/${modelType}/${provider}/${encodeURIComponent(modelName)}`, {
+      method: 'DELETE'
+    });
   }
 };
 
